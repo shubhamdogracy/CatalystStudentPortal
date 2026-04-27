@@ -26,7 +26,7 @@ function AssignmentCard({ assignment }) {
   const statusLabel = isOverdue ? 'Overdue' : 'Available';
   const statusCls   = isOverdue ? 'bg-red-100 text-red-700' : STATUS_STYLES.available;
 
-  const totalModules = (assignment.sections || []).reduce((a, s) => a + (s.modules || []).length, 0);
+  // const totalModules = (assignment.sections || []).reduce((a, s) => a + (s.modules || []).length, 0);
   const totalTime    = (assignment.sections || []).reduce(
     (a, s) => a + (s.modules || []).reduce((b, m) => b + (m.timeLimit || 0), 0), 0
   );
@@ -165,28 +165,38 @@ export default function Assignments({ student }) {
 
   useEffect(() => {
     const batchIds = (student?.mentors || [])
-      .map((m) => m.batch?._id)
-      .filter(Boolean);
+        .map((m) => m.batch?._id)
+        .filter(Boolean);
 
-    if (!batchIds.length) {
-      setLoading(false);
-      return;
-    }
+    if (!batchIds.length) return;
 
-    Promise.all(batchIds.map((id) => assignmentService.getByBatch(id)))
-      .then((results) => {
+    const fetchAssignments = async () => {
+      try {
+        setLoading(true);
+
+        const results = await Promise.all(
+            batchIds.map((id) => assignmentService.getByBatch(id))
+        );
+
         const all = results.flatMap((r) => r.data || []);
-        // deduplicate by _id, only show published
+
         const seen = new Set();
+
         const unique = all.filter((a) => {
-          if (seen.has(a._id) || a.status !== 'published') return false;
+          if (seen.has(a._id) || a.status !== "published") return false;
           seen.add(a._id);
           return true;
         });
+
         setAssignments(unique);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
   }, [student]);
 
   const overdue = assignments.filter(
