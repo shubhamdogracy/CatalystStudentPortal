@@ -6,6 +6,7 @@ import Layout        from './components/layout/Layout';
 import Dashboard     from './pages/Dashboard/Dashboard';
 import Sessions      from './pages/Sessions/Sessions';
 import Slots         from './pages/Slots/Slots';
+import Assignments   from './pages/Assignments/Assignments';
 import Communication from './pages/Communication/Communication';
 import Profile       from './pages/Profile/Profile';
 import PracticeTime  from './pages/PracticeTime/PracticeTime';
@@ -67,6 +68,7 @@ export default function App() {
       case 'dashboard':     return <Dashboard student={student} onNavigate={setPage} />;
       case 'sessions':      return <Sessions onNavigate={setPage} />;
       case 'slots':         return <Slots />;
+      case 'assignments':   return <Assignments student={student} />;
       case 'communication': return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
       case 'practiceTime':  return <PracticeTime />;
       case 'profile':       return <Profile student={student} onUpdateStudent={(updated) => setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))} />;
