@@ -6,6 +6,7 @@ import {
   User,
   LogOut,
   Dumbbell,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { id: 'sessions',      label: 'My Sessions',  icon: Calendar },
   { id: 'slots',         label: 'Book a Slot',  icon: Clock },
+  { id: 'assignments',   label: 'Assignments',  icon: BookOpen },
   { id: 'communication', label: 'Communication',icon: MessageSquare, badgeKey: 'chat' },
   { id: 'practiceTime',  label: 'Practice Time',icon: Dumbbell },
   { id: 'profile',       label: 'My Profile',   icon: User },

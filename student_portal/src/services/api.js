@@ -36,6 +36,10 @@ export const studentService = {
   remove:     (id)          => req(`/students/${id}`, { method: 'DELETE' }),
 };
 
+export const assignmentService = {
+  getByBatch: (batchId) => req(`/assignments/batch/${batchId}`),
+};
+
 export const chatService = {
   getConversations: (userId)              => req(`/chat/conversations/${userId}`),
   getMessages:      (userId, otherId, page = 1) => req(`/chat/messages/${userId}/${otherId}?page=${page}`),
