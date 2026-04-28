@@ -12,11 +12,17 @@ export default function Profile({ student, onUpdateStudent }) {
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
 
-  const initials  = name.split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-  const progress  = student?.progress ?? 0;
-  const course    = student?.batchInfo?.course || '—';
-  const batchName = student?.batchInfo?.name   || '—';
-  const mentor    = student?.mentor;
+  const initials   = name.split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+  const progress   = student?.progress ?? 0;
+  const allMentors = student?.mentors || [];
+  const course     = allMentors.length > 0
+    ? allMentors.map(m => m.batch?.subject || '').filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' · ')
+    : '—';
+  const batchName  = allMentors.length === 1
+    ? (allMentors[0].batch?.name || '—')
+    : allMentors.length > 1
+    ? `${allMentors.length} batches`
+    : '—';
 
   const enrollDate = student?.enrollmentDate
     ? new Date(student.enrollmentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -161,55 +167,80 @@ export default function Profile({ student, onUpdateStudent }) {
             <div className="card-header">
               <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Enrollment Details</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               {[
-                { label: 'Course',             value: course },
                 { label: 'Enrollment Date',    value: enrollDate },
-                { label: 'Batch',              value: batchName },
                 { label: 'Total Sessions',     value: String(student?.totalSessions ?? '—') },
-                { label: 'Completed Sessions', value: String(student?.completedSessions ?? '—') },
-                { label: 'Batch Status',       value: student?.batchInfo?.status || '—' },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-white border border-slate-200 rounded-[10px] p-4">
                   <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.5px] mb-1.5">{label}</div>
-                  <div className="text-sm font-semibold text-slate-900 capitalize">{value}</div>
+                  <div className="text-sm font-semibold text-slate-900">{value}</div>
                 </div>
               ))}
             </div>
+            {allMentors.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {allMentors.map(({ batch }, idx) => batch && (
+                  <div key={batch._id || idx} className="bg-slate-50 border border-slate-200 rounded-[10px] p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] capitalize">{batch.subject}</span>
+                      <span className="text-slate-300">·</span>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${batch.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{batch.status}</span>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-900">{batch.name}</div>
+                    <div className="text-[12px] text-slate-500 mt-0.5">
+                      {batch.completedSessions ?? 0} / {batch.totalSessions ?? 0} sessions
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Mentor details */}
           <div className="card">
             <div className="card-header">
-              <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor</span>
+              <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentors</span>
             </div>
-            {mentor ? (
-              <>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
-                    {mentor.name?.split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                  </div>
-                  <div>
-                    <div className="font-bold text-base text-slate-900 mb-0.5">{mentor.name}</div>
-                    <div className="text-[13px] text-slate-500">{mentor.specialization || mentor.specialisation || '—'}</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { label: 'Specialisation', value: mentor.specialization || mentor.specialisation || '—' },
-                    { label: 'Experience',     value: mentor.experience ? `${mentor.experience} yrs` : '—' },
-                    { label: 'Email',          value: mentor.email || '—' },
-                    { label: 'Phone',          value: mentor.phone || '—' },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="bg-white border border-slate-200 rounded-[10px] p-4">
-                      <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.5px] mb-1.5">{label}</div>
-                      <div className="text-[13px] font-semibold text-slate-900">{value}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
+            {allMentors.length === 0 ? (
               <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {allMentors.map(({ mentor, batch }, idx) => (
+                  <div key={mentor?._id || idx}>
+                    {allMentors.length > 1 && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full capitalize">
+                          {batch?.subject || 'Batch'} · {batch?.name || '—'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
+                        {mentor?.name?.split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-base text-slate-900 mb-0.5">{mentor?.name}</div>
+                        <div className="text-[13px] text-slate-500">{mentor?.specialization || mentor?.specialisation || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'Specialisation', value: mentor?.specialization || mentor?.specialisation || '—' },
+                        { label: 'Experience',     value: mentor?.experience ? `${mentor.experience} yrs` : '—' },
+                        { label: 'Email',          value: mentor?.email || '—' },
+                        { label: 'Phone',          value: mentor?.phone || '—' },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="bg-white border border-slate-200 rounded-[10px] p-4">
+                          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.5px] mb-1.5">{label}</div>
+                          <div className="text-[13px] font-semibold text-slate-900">{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {idx < allMentors.length - 1 && <div className="border-t border-slate-100 mt-5" />}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

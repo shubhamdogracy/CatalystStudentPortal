@@ -3,12 +3,7 @@ import { BookOpen, Calendar, Clock, User, AlertCircle, CheckCircle, FileText } f
 import { assignmentService } from '../../services/api';
 import StatCard from '../../components/common/StatCard';
 import EmptyState from '../../components/common/EmptyState';
-
-const STATUS_STYLES = {
-  available:   'bg-indigo-100 text-indigo-700',
-  'not-started': 'bg-amber-100 text-amber-700',
-  completed:   'bg-emerald-100 text-emerald-700',
-};
+import SATTestTaker from './SATTestTaker';
 
 function SATBadge() {
   return (
@@ -18,21 +13,34 @@ function SATBadge() {
   );
 }
 
-function AssignmentCard({ assignment }) {
+function statusConfig(response, dueDate) {
+  if (response?.status === 'submitted') {
+    return { label: 'Completed', cls: 'bg-emerald-100 text-emerald-700', btn: 'View Results', btnCls: 'bg-emerald-600 hover:bg-emerald-700' };
+  }
+  if (response?.status === 'in_progress') {
+    return { label: 'In Progress', cls: 'bg-amber-100 text-amber-700', btn: 'Resume Test', btnCls: 'bg-amber-500 hover:bg-amber-600' };
+  }
+  const isOverdue = dueDate && new Date(dueDate) < new Date();
+  return {
+    label: isOverdue ? 'Overdue' : 'Available',
+    cls:   isOverdue ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700',
+    btn:   'Start Test',
+    btnCls: 'bg-indigo-600 hover:bg-indigo-700',
+  };
+}
+
+function AssignmentCard({ assignment, onStart }) {
   const [expanded, setExpanded] = useState(false);
 
   const due      = assignment.dueDate ? new Date(assignment.dueDate) : null;
-  const isOverdue = due && due < new Date() && assignment.status !== 'completed';
-  const statusLabel = isOverdue ? 'Overdue' : 'Available';
-  const statusCls   = isOverdue ? 'bg-red-100 text-red-700' : STATUS_STYLES.available;
-
-  // const totalModules = (assignment.sections || []).reduce((a, s) => a + (s.modules || []).length, 0);
-  const totalTime    = (assignment.sections || []).reduce(
+  const totalTime = (assignment.sections || []).reduce(
     (a, s) => a + (s.modules || []).reduce((b, m) => b + (m.timeLimit || 0), 0), 0
   );
   const hasCalculator = (assignment.sections || []).some((s) =>
     (s.modules || []).some((m) => m.calculatorAllowed)
   );
+
+  const cfg = statusConfig(assignment._response, assignment.dueDate);
 
   return (
     <div className="bg-white border border-slate-200 rounded-[12px] overflow-hidden hover:border-indigo-200 hover:shadow-[0_4px_12px_rgba(79,70,229,0.06)] transition-all">
@@ -45,8 +53,8 @@ function AssignmentCard({ assignment }) {
             <span className="text-base font-bold text-slate-900">{assignment.title}</span>
             <SATBadge />
           </div>
-          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${statusCls}`}>
-            {statusLabel}
+          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${cfg.cls}`}>
+            {cfg.label}
           </span>
         </div>
 
@@ -58,7 +66,7 @@ function AssignmentCard({ assignment }) {
         {/* Meta row */}
         <div className="flex items-center gap-5 text-xs text-slate-500 mb-4 flex-wrap">
           {due && (
-            <span className={`flex items-center gap-[5px] ${isOverdue ? 'text-red-500 font-semibold' : ''}`}>
+            <span className={`flex items-center gap-[5px] ${cfg.label === 'Overdue' ? 'text-red-500 font-semibold' : ''}`}>
               <Calendar size={13} />
               Due: <strong>{due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
             </span>
@@ -96,7 +104,6 @@ function AssignmentCard({ assignment }) {
                   <span>{isMath ? '🔢' : '📖'}</span>
                   <span>{s.name}</span>
                   {qCount > 0 && <span className="opacity-60">· {qCount}Q</span>}
-                  <span className="opacity-60">· {(s.modules || []).length} mod</span>
                 </div>
               );
             })}
@@ -139,17 +146,21 @@ function AssignmentCard({ assignment }) {
         )}
 
         {/* Action */}
-        <div className="flex gap-2.5 pt-3 border-t border-slate-100">
+        <div className="flex gap-2.5 pt-3 border-t border-slate-100 items-center">
           <button
-            disabled
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white opacity-60 cursor-not-allowed"
-            title="Test-taking coming soon"
+            onClick={() => onStart(assignment)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-colors ${cfg.btnCls}`}
           >
-            Start Test
+            {cfg.btn}
           </button>
           {assignment.passingScore && (
             <span className="flex items-center text-xs text-slate-400">
               🎯 Pass: {assignment.passingScore}%
+            </span>
+          )}
+          {assignment._response?.status === 'submitted' && (
+            <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+              <CheckCircle size={12} /> {assignment._response.percentage}% scored
             </span>
           )}
         </div>
@@ -162,31 +173,37 @@ export default function Assignments({ student }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState('');
+  const [takingTest, setTakingTest]   = useState(null); // { assignment, batchId }
 
   useEffect(() => {
-    const batchIds = (student?.mentors || [])
-        .map((m) => m.batch?._id)
-        .filter(Boolean);
+    const batchIds = (student?.mentors || []).map((m) => m.batch?._id).filter(Boolean);
+    if (!batchIds.length || !student?._id) { setLoading(false); return; }
 
-    if (!batchIds.length) return;
-
-    const fetchAssignments = async () => {
+    (async () => {
       try {
         setLoading(true);
+        const [assignmentResults, responsesRes] = await Promise.all([
+          Promise.all(batchIds.map((id) =>
+            assignmentService.getByBatch(id).then((r) => ({ batchId: id, data: r.data || [] }))
+          )),
+          assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
+        ]);
 
-        const results = await Promise.all(
-            batchIds.map((id) => assignmentService.getByBatch(id))
-        );
-
-        const all = results.flatMap((r) => r.data || []);
+        const responseMap = {};
+        for (const r of (responsesRes.data || [])) {
+          const aId = r.assignmentId?._id?.toString() || r.assignmentId?.toString();
+          if (aId) responseMap[aId] = r;
+        }
 
         const seen = new Set();
-
-        const unique = all.filter((a) => {
-          if (seen.has(a._id) || a.status !== "published") return false;
-          seen.add(a._id);
-          return true;
-        });
+        const unique = assignmentResults
+          .flatMap(({ batchId, data }) => data.map((a) => ({ ...a, _batchId: batchId })))
+          .filter((a) => {
+            if (seen.has(a._id) || a.status !== 'published') return false;
+            seen.add(a._id);
+            return true;
+          })
+          .map((a) => ({ ...a, _response: responseMap[a._id?.toString()] || null }));
 
         setAssignments(unique);
       } catch (e) {
@@ -194,13 +211,60 @@ export default function Assignments({ student }) {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchAssignments();
+    })();
   }, [student]);
 
-  const overdue = assignments.filter(
-    (a) => a.dueDate && new Date(a.dueDate) < new Date()
+  const handleStart = (assignment) => {
+    setTakingTest({ assignment, batchId: assignment._batchId });
+  };
+
+  const handleBack = () => {
+    // Reload to pick up updated response status after submit
+    setTakingTest(null);
+    setLoading(true);
+    const batchIds = (student?.mentors || []).map((m) => m.batch?._id).filter(Boolean);
+    if (!batchIds.length || !student?._id) { setLoading(false); return; }
+
+    Promise.all([
+      Promise.all(batchIds.map((id) =>
+        assignmentService.getByBatch(id).then((r) => ({ batchId: id, data: r.data || [] }))
+      )),
+      assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
+    ]).then(([assignmentResults, responsesRes]) => {
+      const responseMap = {};
+      for (const r of (responsesRes.data || [])) {
+        const aId = r.assignmentId?._id?.toString() || r.assignmentId?.toString();
+        if (aId) responseMap[aId] = r;
+      }
+      const seen = new Set();
+      const unique = assignmentResults
+        .flatMap(({ batchId, data }) => data.map((a) => ({ ...a, _batchId: batchId })))
+        .filter((a) => {
+          if (seen.has(a._id) || a.status !== 'published') return false;
+          seen.add(a._id);
+          return true;
+        })
+        .map((a) => ({ ...a, _response: responseMap[a._id?.toString()] || null }));
+      setAssignments(unique);
+    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+  };
+
+  // Show test taker
+  if (takingTest) {
+    return (
+      <SATTestTaker
+        assignment={takingTest.assignment}
+        student={student}
+        batchId={takingTest.batchId}
+        initialResponse={takingTest.assignment._response}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  const completed = assignments.filter((a) => a._response?.status === 'submitted').length;
+  const overdue   = assignments.filter(
+    (a) => a.dueDate && new Date(a.dueDate) < new Date() && a._response?.status !== 'submitted'
   ).length;
 
   if (loading) {
@@ -215,9 +279,9 @@ export default function Assignments({ student }) {
     <div className="page-content">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-5 mb-6">
-        <StatCard icon={BookOpen}    count={assignments.length} label="Total Assignments" colorClass="indigo" />
-        <StatCard icon={CheckCircle} count={assignments.length - overdue} label="Available"    colorClass="green"  />
-        <StatCard icon={AlertCircle} count={overdue}            label="Overdue"          colorClass="red"    />
+        <StatCard icon={BookOpen}    count={assignments.length}  label="Total Assignments" colorClass="indigo" />
+        <StatCard icon={CheckCircle} count={completed}           label="Completed"         colorClass="green"  />
+        <StatCard icon={AlertCircle} count={overdue}             label="Overdue"           colorClass="red"    />
       </div>
 
       <div className="card">
@@ -236,7 +300,7 @@ export default function Assignments({ student }) {
         ) : (
           <div className="flex flex-col gap-4">
             {assignments.map((a) => (
-              <AssignmentCard key={a._id} assignment={a} />
+              <AssignmentCard key={a._id} assignment={a} onStart={handleStart} />
             ))}
           </div>
         )}

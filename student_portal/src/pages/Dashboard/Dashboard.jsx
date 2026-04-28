@@ -27,12 +27,10 @@ export default function Dashboard({ student, onNavigate }) {
   const progress      = student?.progress ?? 0;
   const sessCompleted = student?.completedSessions ?? 0;
   const totalSessions = student?.totalSessions ?? 0;
-  const course        = student?.batchInfo?.course || '—';
-  const batchName     = student?.batchInfo?.name   || '—';
+  const allMentors    = student?.mentors || [];
   const enrollDate    = student?.enrollmentDate
     ? new Date(student.enrollmentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
-  const mentor        = student?.mentor;
 
   return (
     <div className="page-content">
@@ -123,32 +121,42 @@ export default function Dashboard({ student, onNavigate }) {
         {/* Mentor card */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor</span>
+            <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor{allMentors.length > 1 ? 's' : ''}</span>
           </div>
-          {mentor ? (
-            <>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
-                  {mentor.name?.split(' ').map((n) => n[0]).join('')}
-                </div>
-                <div>
-                  <div className="font-bold text-base text-slate-900 mb-0.5">{mentor.name}</div>
-                  <div className="text-[13px] text-slate-500 mb-1.5">
-                    {mentor.specialization || mentor.specialisation || '—'}
-                    {mentor.experience ? ` · ${mentor.experience} yrs exp` : ''}
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 bg-indigo-600/[0.08] text-indigo-600 px-2.5 py-1 rounded-full text-xs font-semibold">
-                    <Star size={11} /> Your Mentor
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button className="btn btn-primary btn-sm" onClick={() => onNavigate('communication')}>Message</button>
-                <button className="btn btn-outline btn-sm"  onClick={() => onNavigate('slots')}>Book Slot</button>
-              </div>
-            </>
-          ) : (
+          {allMentors.length === 0 ? (
             <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {allMentors.map(({ mentor, batch }, idx) => (
+                <div key={mentor?._id || idx}>
+                  {allMentors.length > 1 && (
+                    <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-2 capitalize">
+                      {batch?.subject} · {batch?.name || '—'}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
+                      {mentor?.name?.split(' ').map((n) => n[0]).join('')}
+                    </div>
+                    <div>
+                      <div className="font-bold text-base text-slate-900 mb-0.5">{mentor?.name}</div>
+                      <div className="text-[13px] text-slate-500 mb-1.5">
+                        {mentor?.specialization || mentor?.specialisation || '—'}
+                        {mentor?.experience ? ` · ${mentor.experience} yrs exp` : ''}
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 bg-indigo-600/[0.08] text-indigo-600 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        <Star size={11} /> Your Mentor
+                      </span>
+                    </div>
+                  </div>
+                  {idx < allMentors.length - 1 && <div className="border-t border-slate-100 mt-1" />}
+                </div>
+              ))}
+              <div className="flex gap-2 mt-1">
+                <button className="btn btn-primary btn-sm" onClick={() => onNavigate('communication')}>Message</button>
+                <button className="btn btn-outline btn-sm" onClick={() => onNavigate('slots')}>Book Slot</button>
+              </div>
+            </div>
           )}
         </div>
 
@@ -158,21 +166,39 @@ export default function Dashboard({ student, onNavigate }) {
             <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Course Details</span>
           </div>
           <div className="flex flex-col">
-            {[
-              { label: 'Course',         value: course },
-              { label: 'Batch',          value: batchName },
-              { label: 'Enrolled',       value: enrollDate },
-              { label: 'Total Sessions', value: totalSessions ? `${totalSessions} sessions` : '—' },
-              { label: 'Completed',      value: totalSessions ? `${sessCompleted} of ${totalSessions}` : '—' },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm"
-              >
-                <span className="text-slate-500">{label}</span>
-                <span className="font-semibold text-slate-900">{value}</span>
-              </div>
-            ))}
+            {allMentors.length > 0 ? (
+              allMentors.map(({ batch }, idx) => batch && (
+                <div key={batch._id || idx} className={idx > 0 ? 'mt-3 pt-3 border-t border-slate-100' : ''}>
+                  {allMentors.length > 1 && (
+                    <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-1.5 capitalize">
+                      {batch.subject} · {batch.name}
+                    </div>
+                  )}
+                  {[
+                    { label: 'Course',    value: batch.subject ? batch.subject.charAt(0).toUpperCase() + batch.subject.slice(1) : '—' },
+                    { label: 'Batch',     value: batch.name || '—' },
+                    { label: 'Enrolled',  value: enrollDate },
+                    { label: 'Sessions',  value: batch.totalSessions ? `${batch.completedSessions ?? 0} / ${batch.totalSessions}` : '—' },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
+                      <span className="text-slate-500">{label}</span>
+                      <span className="font-semibold text-slate-900">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              ))
+            ) : (
+              [
+                { label: 'Enrolled',       value: enrollDate },
+                { label: 'Total Sessions', value: totalSessions ? `${totalSessions} sessions` : '—' },
+                { label: 'Completed',      value: totalSessions ? `${sessCompleted} of ${totalSessions}` : '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="font-semibold text-slate-900">{value}</span>
+                </div>
+              ))
+            )}
           </div>
           <div className="mt-3.5">
             <div className="flex justify-between text-[13px] mb-1">
