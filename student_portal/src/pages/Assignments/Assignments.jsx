@@ -29,7 +29,7 @@ function statusConfig(response, dueDate) {
   };
 }
 
-function AssignmentCard({ assignment, onStart }) {
+function AssignmentCard({ assignment, onStart, isGuest }) {
   const [expanded, setExpanded] = useState(false);
 
   const due      = assignment.dueDate ? new Date(assignment.dueDate) : null;
@@ -153,7 +153,7 @@ function AssignmentCard({ assignment, onStart }) {
           >
             {cfg.btn}
           </button>
-          {assignment.passingScore && (
+          {!isGuest && assignment.passingScore && (
             <span className="flex items-center text-xs text-slate-400">
               🎯 Pass: {assignment.passingScore}%
             </span>
@@ -175,62 +175,39 @@ export default function Assignments({ student }) {
   const [error, setError]             = useState('');
   const [takingTest, setTakingTest]   = useState(null); // { assignment, batchId }
 
-  useEffect(() => {
-    const batchIds = (student?.mentors || []).map((m) => m.batch?._id).filter(Boolean);
-    if (!batchIds.length || !student?._id) { setLoading(false); return; }
+  const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
-    (async () => {
-      try {
-        setLoading(true);
-        const [assignmentResults, responsesRes] = await Promise.all([
-          Promise.all(batchIds.map((id) =>
-            assignmentService.getByBatch(id).then((r) => ({ batchId: id, data: r.data || [] }))
-          )),
-          assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
-        ]);
-
-        const responseMap = {};
-        for (const r of (responsesRes.data || [])) {
-          const aId = r.assignmentId?._id?.toString() || r.assignmentId?.toString();
-          if (aId) responseMap[aId] = r;
-        }
-
-        const seen = new Set();
-        const unique = assignmentResults
-          .flatMap(({ batchId, data }) => data.map((a) => ({ ...a, _batchId: batchId })))
-          .filter((a) => {
-            if (seen.has(a._id) || a.status !== 'published') return false;
-            seen.add(a._id);
-            return true;
-          })
-          .map((a) => ({ ...a, _response: responseMap[a._id?.toString()] || null }));
-
-        setAssignments(unique);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
+  const loadGuestAssignments = async () => {
+    try {
+      setLoading(true);
+      const [assignmentsRes, responsesRes] = await Promise.all([
+        assignmentService.getForGuest(),
+        assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
+      ]);
+      const responseMap = {};
+      for (const r of (responsesRes.data || [])) {
+        const aId = r.assignmentId?._id?.toString() || r.assignmentId?.toString();
+        if (aId) responseMap[aId] = r;
       }
-    })();
-  }, [student]);
-
-  const handleStart = (assignment) => {
-    setTakingTest({ assignment, batchId: assignment._batchId });
+      setAssignments((assignmentsRes.data || []).map((a) => ({ ...a, _response: responseMap[a._id?.toString()] || null })));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleBack = () => {
-    // Reload to pick up updated response status after submit
-    setTakingTest(null);
-    setLoading(true);
+  const loadStudentAssignments = async () => {
     const batchIds = (student?.mentors || []).map((m) => m.batch?._id).filter(Boolean);
-    if (!batchIds.length || !student?._id) { setLoading(false); return; }
-
-    Promise.all([
-      Promise.all(batchIds.map((id) =>
-        assignmentService.getByBatch(id).then((r) => ({ batchId: id, data: r.data || [] }))
-      )),
-      assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
-    ]).then(([assignmentResults, responsesRes]) => {
+    if (!batchIds.length) { setLoading(false); return; }
+    try {
+      setLoading(true);
+      const [assignmentResults, responsesRes] = await Promise.all([
+        Promise.all(batchIds.map((id) =>
+          assignmentService.getByBatch(id).then((r) => ({ batchId: id, data: r.data || [] }))
+        )),
+        assignmentService.getResponses(student._id).catch(() => ({ data: [] })),
+      ]);
       const responseMap = {};
       for (const r of (responsesRes.data || [])) {
         const aId = r.assignmentId?._id?.toString() || r.assignmentId?.toString();
@@ -246,7 +223,27 @@ export default function Assignments({ student }) {
         })
         .map((a) => ({ ...a, _response: responseMap[a._id?.toString()] || null }));
       setAssignments(unique);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!student?._id) { setLoading(false); return; }
+    if (isGuest) loadGuestAssignments();
+    else loadStudentAssignments();
+  }, [student]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleStart = (assignment) => {
+    setTakingTest({ assignment, batchId: assignment._batchId });
+  };
+
+  const handleBack = () => {
+    setTakingTest(null);
+    if (isGuest) loadGuestAssignments();
+    else loadStudentAssignments();
   };
 
   // Show test taker
@@ -300,7 +297,7 @@ export default function Assignments({ student }) {
         ) : (
           <div className="flex flex-col gap-4">
             {assignments.map((a) => (
-              <AssignmentCard key={a._id} assignment={a} onStart={handleStart} />
+              <AssignmentCard key={a._id} assignment={a} onStart={handleStart} isGuest={isGuest} />
             ))}
           </div>
         )}
