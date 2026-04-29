@@ -63,8 +63,15 @@ export default function App() {
     setChatUnreadCount(0);
   };
 
+  const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
+
+  // Redirect guests away from paid-only pages
+  const safePage = isGuest && !['dashboard', 'assignments', 'profile'].includes(page)
+    ? 'dashboard'
+    : page;
+
   const renderPage = () => {
-    switch (page) {
+    switch (safePage) {
       case 'dashboard':     return <Dashboard student={student} onNavigate={setPage} />;
       case 'sessions':      return <Sessions onNavigate={setPage} />;
       case 'slots':         return <Slots />;
@@ -77,7 +84,7 @@ export default function App() {
   };
 
   return (
-    <Layout page={page} onNavigate={setPage} onLogout={handleLogout} student={student} chatUnreadCount={chatUnreadCount}>
+    <Layout page={safePage} onNavigate={setPage} onLogout={handleLogout} student={student} chatUnreadCount={chatUnreadCount} isGuest={isGuest}>
       {renderPage()}
     </Layout>
   );

@@ -9,21 +9,22 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import BAvatar from 'boring-avatars';
 import catalystLogo from '../../assets/catalyst-logo.png';
 
 const NAV_ITEMS = [
-  { id: 'dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
-  { id: 'sessions',      label: 'My Sessions',  icon: Calendar },
-  { id: 'slots',         label: 'Book a Slot',  icon: Clock },
-  { id: 'assignments',   label: 'Assignments',  icon: BookOpen },
-  { id: 'communication', label: 'Communication',icon: MessageSquare, badgeKey: 'chat' },
-  { id: 'practiceTime',  label: 'Practice Time',icon: Dumbbell },
-  { id: 'profile',       label: 'My Profile',   icon: User },
+  { id: 'dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+  { id: 'sessions',      label: 'My Sessions',   icon: Calendar,       guestLocked: true },
+  { id: 'slots',         label: 'Book a Slot',   icon: Clock,          guestLocked: true },
+  { id: 'assignments',   label: 'Assignments',   icon: BookOpen },
+  { id: 'communication', label: 'Communication', icon: MessageSquare,  guestLocked: true, badgeKey: 'chat' },
+  { id: 'practiceTime',  label: 'Practice Time', icon: Dumbbell,       guestLocked: true },
+  { id: 'profile',       label: 'My Profile',    icon: User },
 ];
 
-export default function Sidebar({ active, onNavigate, onLogout, collapsed, onToggle, student, chatUnreadCount = 0 }) {
+export default function Sidebar({ active, onNavigate, onLogout, collapsed, onToggle, student, chatUnreadCount = 0, isGuest = false }) {
   return (
     <aside
       className="bg-[#0f172a] flex flex-col fixed top-0 left-0 h-screen z-[100] transition-all duration-300 overflow-hidden"
@@ -53,7 +54,9 @@ export default function Sidebar({ active, onNavigate, onLogout, collapsed, onTog
             <div className="text-[13px] font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
               {student?.name || ''}
             </div>
-            <div className="text-[11px] text-slate-500 uppercase tracking-[0.5px]">Student</div>
+            <div className="text-[11px] uppercase tracking-[0.5px]" style={{ color: isGuest ? '#f59e0b' : '#64748b' }}>
+              {isGuest ? 'Guest' : 'Student'}
+            </div>
           </div>
         )}
       </div>
@@ -65,28 +68,33 @@ export default function Sidebar({ active, onNavigate, onLogout, collapsed, onTog
             Main Menu
           </div>
         )}
-        {NAV_ITEMS.map(({ id, label, icon: Icon, badgeKey }) => {
+        {NAV_ITEMS.map(({ id, label, icon: Icon, badgeKey, guestLocked }) => {
+          const locked     = isGuest && guestLocked;
           const badgeCount = badgeKey === 'chat' ? chatUnreadCount : 0;
+
           return (
             <div
               key={id}
-              onClick={() => onNavigate(id)}
-              title={collapsed ? label : ''}
-              className={`relative flex items-center cursor-pointer transition-all border-l-[3px] text-sm font-medium
+              onClick={() => !locked && onNavigate(id)}
+              title={collapsed ? (locked ? `${label} (Full access required)` : label) : locked ? 'Full access required' : ''}
+              className={`relative flex items-center transition-all border-l-[3px] text-sm font-medium
                 ${collapsed ? 'justify-center px-2 py-3' : 'gap-3 px-5 py-2.5'}
-                ${active === id
-                  ? 'bg-[rgba(79,70,229,0.15)] border-l-indigo-600 text-white'
-                  : 'border-l-transparent text-slate-400 hover:bg-[#1e293b] hover:text-slate-200'
+                ${locked
+                  ? 'border-l-transparent text-slate-600 cursor-not-allowed opacity-50'
+                  : active === id
+                  ? 'bg-[rgba(79,70,229,0.15)] border-l-indigo-600 text-white cursor-pointer'
+                  : 'border-l-transparent text-slate-400 hover:bg-[#1e293b] hover:text-slate-200 cursor-pointer'
                 }`}
             >
               <Icon size={18} className="shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
-              {!collapsed && badgeCount > 0 && (
+              {!collapsed && locked && <Lock size={12} className="shrink-0 text-slate-600" />}
+              {!collapsed && !locked && badgeCount > 0 && (
                 <span className="ml-auto bg-indigo-600 text-white text-[10px] font-bold px-[7px] py-[2px] rounded-[10px]">
                   {badgeCount > 99 ? '99+' : badgeCount}
                 </span>
               )}
-              {collapsed && badgeCount > 0 && (
+              {collapsed && badgeCount > 0 && !locked && (
                 <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">
                   {badgeCount > 9 ? '9+' : badgeCount}
                 </span>
