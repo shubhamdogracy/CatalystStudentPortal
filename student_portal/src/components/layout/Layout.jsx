@@ -55,16 +55,16 @@ export default function Layout({ page, onNavigate, onLogout, student, chatUnread
       />
 
       <main
-        className="flex-1 h-screen overflow-y-auto bg-slate-100 transition-all duration-300 relative"
+        className="flex-1 h-screen overflow-y-auto bg-gray-50 transition-all duration-300 relative"
         style={{ marginLeft: collapsed ? 72 : 250 }}
       >
         {isGuest && <GuestBanner />}
 
-        {/* Top bar */}
-        <div className="bg-white px-7 py-4 flex items-center justify-between border-b border-slate-200 sticky top-0 z-50">
+        {/* Top bar — matches mentor portal header style */}
+        <div className="bg-white px-7 py-4 flex items-center justify-between border-b border-gray-100 sticky top-0 z-50" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div>
-            <div className="text-xl font-bold text-slate-900">{title}</div>
-            <div className="text-[13px] text-slate-500 mt-0.5">{subtitle}</div>
+            <div className="text-xl font-bold text-gray-900">{title}</div>
+            <div className="text-[13px] text-gray-400 mt-0.5">{subtitle}</div>
           </div>
           <div className="flex items-center gap-3">
             {isGuest && (
@@ -72,7 +72,7 @@ export default function Layout({ page, onNavigate, onLogout, student, chatUnread
                 Guest
               </span>
             )}
-            <span className="text-[13px] text-slate-500 bg-slate-100 px-[14px] py-[6px] rounded-full">
+            <span className="text-[13px] text-gray-500 bg-gray-100 px-[14px] py-[6px] rounded-full">
               {formatDate()}
             </span>
           </div>
