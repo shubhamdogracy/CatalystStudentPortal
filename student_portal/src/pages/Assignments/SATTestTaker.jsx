@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChevronLeft, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronLeft, Clock } from 'lucide-react';
 import { assignmentService } from '../../services/api';
 import Calculator from './Calculator';
+import { StudentReportModal } from './StudentReportModal';
 
 const CHOICES = ['A', 'B', 'C', 'D'];
 
@@ -11,79 +12,6 @@ function formatTime(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function getMasteryLevel(pct) {
-  if (pct >= 85) return { label: 'MASTER',       color: '#2563eb', bg: '#dbeafe', bar: '#10b981' };
-  if (pct >= 70) return { label: 'ELITE',        color: '#0891b2', bg: '#cffafe', bar: '#06b6d4' };
-  if (pct >= 55) return { label: 'EXPERT',       color: '#7c3aed', bg: '#ede9fe', bar: '#8b5cf6' };
-  if (pct >= 40) return { label: 'ADVANCED',     color: '#d97706', bg: '#fef3c7', bar: '#f59e0b' };
-  if (pct >= 25) return { label: 'INTERMEDIATE', color: '#ea580c', bg: '#ffedd5', bar: '#f97316' };
-  return           { label: 'NOVICE',            color: '#ef4444', bg: '#fee2e2', bar: '#d1d5db' };
-}
-
-const MASTERY_DESCRIPTIONS = [
-  { label: 'MASTER',       range: '85–100', color: '#2563eb', desc: 'Exceptional mastery with outstanding understanding and ability to handle complex problems with ease' },
-  { label: 'ELITE',        range: '70–84',  color: '#0891b2', desc: 'Strong command of the topic with excellent comprehension and effective problem-solving skills' },
-  { label: 'EXPERT',       range: '55–69',  color: '#7c3aed', desc: 'Solid grasp of the topic with good understanding and confident problem-solving abilities' },
-  { label: 'ADVANCED',     range: '40–54',  color: '#d97706', desc: 'Good understanding with comfort in standard problems, may need practice with complex ones' },
-  { label: 'INTERMEDIATE', range: '25–39',  color: '#ea580c', desc: 'Basic understanding of fundamentals, would benefit from additional practice' },
-  { label: 'NOVICE',       range: '0–24',   color: '#ef4444', desc: 'Beginning level, focus on building foundational knowledge and basic concepts' },
-];
-
-function getGroupName(section, moduleNum) {
-  const name = section.name.toLowerCase();
-  const isRW = name.includes('reading') || name.includes('writing') ||
-      (section.sid || section.id) === 'rw';
-  if (isRW) return moduleNum === 1 ? 'Writing Mastery' : 'Reading Mastery';
-  return 'Mathematics Mastery';
-}
-
-function computeTopicData(assignment, studentAnswers) {
-  const result = {};
-  (assignment.sections || []).forEach((section) => {
-    (section.modules || []).forEach((mod) => {
-      const groupName = getGroupName(section, mod.number);
-      if (!result[groupName]) result[groupName] = {};
-      (mod.questions || []).forEach((q) => {
-        const topic = (q.topic || '').trim() || null;
-        if (!topic) return;
-        if (!result[groupName][topic]) result[groupName][topic] = { correct: 0, total: 0, score: 0, maxScore: 0 };
-        const answered  = studentAnswers[q.qid];
-        const isCorrect = answered && answered === q.correctAnswer;
-        result[groupName][topic].total++;
-        result[groupName][topic].maxScore += (q.score || 1);
-        if (isCorrect) { result[groupName][topic].correct++; result[groupName][topic].score += (q.score || 1); }
-      });
-      if (Object.keys(result[groupName]).length === 0) delete result[groupName];
-    });
-  });
-  return result;
-}
-
-// SVG animated donut chart
-function DonutChart({ percentage, size = 130, strokeWidth = 11, color = '#4f46e5' }) {
-  const [animated, setAnimated] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setAnimated(true), 200); return () => clearTimeout(t); }, []);
-  const r    = (size - strokeWidth) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = animated ? (percentage / 100) * circ : 0;
-  const cx   = size / 2;
-  const cy   = size / 2;
-  return (
-      <svg width={size} height={size} className="shrink-0">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth={strokeWidth} />
-        <circle
-            cx={cx} cy={cy} r={r}
-            fill="none" stroke={color} strokeWidth={strokeWidth}
-            strokeDasharray={`${dash} ${circ - dash}`}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ transition: 'stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)' }}
-        />
-        <text x={cx} y={cy - 7} textAnchor="middle" fontSize={size * 0.21} fontWeight="800" fill="#1e293b">{percentage}%</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize={size * 0.1} fill="#94a3b8">score</text>
-      </svg>
-  );
-}
 
 // Colorful dashed SAT-style divider
 function SATDivider() {
@@ -389,95 +317,6 @@ function QuestionPicker({ questions, currentIdx, answers, markedForReview, onSel
   );
 }
 
-function generatePerformanceSummary(result, topicData) {
-  const pct = result?.percentage ?? 0;
-  const sections = {};
-  (result?.sectionResponses || []).forEach(sr => {
-    const label   = sr.sid === 'rw' ? 'Reading & Writing' : 'Mathematics';
-    const total   = (sr.moduleResponses || []).reduce((a, m) => a + (m.totalQuestions || 0), 0);
-    const correct = (sr.moduleResponses || []).reduce((a, m) => a + (m.correctAnswers  || 0), 0);
-    sections[label] = { pct: total > 0 ? Math.round((correct / total) * 100) : 0 };
-  });
-
-  const strong = [], weak = [], moderate = [];
-  Object.entries(topicData).forEach(([, topics]) =>
-      Object.entries(topics).forEach(([topic, data]) => {
-        const p = data.maxScore > 0 ? Math.round((data.score / data.maxScore) * 100) : 0;
-        if (p >= 70) strong.push(topic);
-        else if (p < 40) weak.push(topic);
-        else moderate.push(topic);
-      })
-  );
-
-  const parts = [];
-  if (pct >= 85)      parts.push(`Outstanding performance! Your ${pct}% score places you among top-tier test-takers with exceptional command of the material.`);
-  else if (pct >= 70) parts.push(`Strong performance! Scoring ${pct}% shows solid mastery across key SAT concepts — you're well on your way.`);
-  else if (pct >= 55) parts.push(`Good effort! Your ${pct}% score shows a developing understanding with a strong base to build from.`);
-  else if (pct >= 40) parts.push(`You scored ${pct}%. You have a real foundation here, and consistent targeted practice will drive meaningful improvement.`);
-  else                parts.push(`You scored ${pct}%. Remember — this is your starting point, not your ceiling. Every expert began exactly here.`);
-
-  const sKeys = Object.keys(sections);
-  if (sKeys.length >= 2) {
-    const sorted = [...sKeys].sort((a, b) => sections[b].pct - sections[a].pct);
-    if (sections[sorted[0]].pct !== sections[sorted[sorted.length - 1]].pct)
-      parts.push(`Your strongest section was ${sorted[0]} (${sections[sorted[0]].pct}%), while ${sorted[sorted.length - 1]} (${sections[sorted[sorted.length - 1]].pct}%) is your highest-leverage opportunity for improvement.`);
-  }
-
-  if (strong.length > 0) {
-    const list = strong.slice(0, 3).join(', ') + (strong.length > 3 ? ` +${strong.length - 3} more` : '');
-    parts.push(`You demonstrated excellent mastery in: ${list}.`);
-  }
-  if (weak.length > 0) {
-    const list = weak.slice(0, 3).join(', ') + (weak.length > 3 ? ` +${weak.length - 3} more` : '');
-    parts.push(`Prioritize focused review of: ${list} — these topics offer your biggest score gains.`);
-  } else if (moderate.length > 0) {
-    const list = moderate.slice(0, 2).join(' and ');
-    parts.push(`Topics like ${list} are solid but can be pushed to mastery level with a bit more practice.`);
-  }
-
-  if (pct < 55)      parts.push('Next step: build fundamentals in your weaker topics, practice similar questions daily, and re-assess in 1–2 weeks to measure progress.');
-  else if (pct < 70) parts.push('Next step: drill your weaker topics and simulate a full-length test to lock in your progress.');
-  else               parts.push('Next step: focus on precision — review any mistakes carefully to avoid losing points you should be winning.');
-
-  return parts.join(' ');
-}
-
-function openResultReport(result, assignment, topicData, summary, moduleTimings) {
-  const pct = result?.percentage ?? 0;
-
-  const moduleRows = (result?.sectionResponses || [])
-      .flatMap(sr => (sr.moduleResponses || []).map(mr => {
-        const timing     = moduleTimings.find(t => t.sectionId === sr.sid && t.moduleNum === mr.moduleNumber);
-        const mpct       = mr.totalQuestions > 0 ? Math.round((mr.correctAnswers / mr.totalQuestions) * 100) : 0;
-        const secLabel   = sr.sid === 'rw' ? 'Reading & Writing' : 'Mathematics';
-        return `<tr><td>${secLabel} – Module ${mr.moduleNumber}</td><td>${mr.correctAnswers} / ${mr.totalQuestions}</td><td>${mpct}%</td><td>${mr.score} pts</td><td>${timing ? `${formatTime(timing.timeUsed)} / ${formatTime(timing.timeLimit)}` : '—'}</td></tr>`;
-      })).join('');
-
-  const topicRows = Object.entries(topicData)
-      .flatMap(([group, topics]) => [
-        `<tr class="gr"><td colspan="3">${group}</td></tr>`,
-        ...Object.entries(topics).map(([topic, data]) => {
-          const p = data.maxScore > 0 ? Math.round((data.score / data.maxScore) * 100) : 0;
-          const m = getMasteryLevel(p);
-          return `<tr><td>${topic}</td><td><span style="background:${m.bg};color:${m.color};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">${m.label}</span></td><td>${data.correct}/${data.total} (${p}%)</td></tr>`;
-        }),
-      ]).join('');
-
-  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${assignment.title} – Results</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:780px;margin:0 auto;padding:32px 24px;color:#1e293b}h1{font-size:22px;font-weight:800}.meta{color:#64748b;font-size:13px;margin:4px 0 24px}.hero{display:flex;align-items:center;gap:28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:16px;padding:24px 28px;margin-bottom:20px}.hero-pct{font-size:56px;font-weight:900;line-height:1}.hero-lbl{font-size:12px;opacity:.75;margin-top:3px}.hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1}.hsv{font-size:24px;font-weight:800}.hsl{font-size:11px;opacity:.75}.sbox{background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:18px}.stitle{font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}.stext{font-size:13px;color:#15803d;line-height:1.65}.st{font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px}table{width:100%;border-collapse:collapse;font-size:13px}thead tr{background:#1e293b;color:#fff}th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}td{padding:9px 12px;border-bottom:1px solid #f1f5f9}tr.gr td{background:#f8fafc;font-weight:700;font-size:12px;color:#475569;padding:7px 12px}.foot{margin-top:28px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}@media print{body{padding:16px}}</style>
-</head><body>
-<h1>${assignment.title}</h1><p class="meta">SAT Assessment Results &nbsp;·&nbsp; ${date}</p>
-<div class="hero"><div><div class="hero-pct">${pct}%</div><div class="hero-lbl">Overall Score</div></div><div class="hero-stats"><div><div class="hsv">${result?.overallScore ?? 0}</div><div class="hsl">Points Earned</div></div><div><div class="hsv">${result?.maxScore ?? 0}</div><div class="hsl">Total Points</div></div></div></div>
-${summary ? `<div class="sbox"><div class="stitle">✦ Performance Insights</div><p class="stext">${summary}</p></div>` : ''}
-<div class="st">Module Breakdown</div><table><thead><tr><th>Module</th><th>Correct</th><th>Score %</th><th>Points</th><th>Time Used</th></tr></thead><tbody>${moduleRows}</tbody></table>
-${topicRows ? `<div class="st">Topic Mastery</div><table><thead><tr><th>Topic</th><th>Mastery Level</th><th>Score</th></tr></thead><tbody>${topicRows}</tbody></table>` : ''}
-<div class="foot">Generated by Catalyst Student Portal &nbsp;·&nbsp; ${new Date().toLocaleString()}</div>
-<script>window.focus();window.print();<script></body></html>`;
-
-  const w = window.open('', '_blank');
-  if (w) { w.document.write(html); w.document.close(); }
-}
 
 // Start Screen
 function StartScreen({ assignment, onBegin, onBack, error, isGuest }) {
@@ -545,239 +384,64 @@ function StartScreen({ assignment, onBegin, onBack, error, isGuest }) {
   );
 }
 
-// Result Screen
-function ResultScreen({ result, assignment, isGuest, onBack, moduleTimings = [], studentAnswers = {} }) {
-  const [showMasteryDesc, setShowMasteryDesc] = useState(false);
-  const [chartsReady,     setChartsReady]     = useState(false);
 
-  useEffect(() => { const t = setTimeout(() => setChartsReady(true), 150); return () => clearTimeout(t); }, []);
+// Transforms the API result + flat answers into the attempt shape StudentReportModal expects.
+function buildAttemptFromResult(result, assignment, finalAnswers, moduleTimings, student) {
+  // Build a flat answers dict keyed by qid.
+  // For fresh submissions finalAnswers is already populated.
+  // For already-submitted assignments (page reload), reconstruct from stored server data.
+  let answers = { ...finalAnswers };
+  if (Object.keys(answers).length === 0) {
+    (result?.sectionResponses || []).forEach(sr => {
+      (sr.moduleResponses || []).forEach(mr => {
+        if (Array.isArray(mr.answers)) {
+          mr.answers.forEach(a => {
+            // Server may use {qid, selected} or {questionId, answer} — handle both.
+            const key = a.qid || a.questionId;
+            const val = a.selected || a.answer;
+            if (key && val) answers[key] = val;
+          });
+        } else if (mr.answers && typeof mr.answers === 'object') {
+          Object.assign(answers, mr.answers);
+        }
+      });
+    });
+  }
 
-  const passed = result?.passed;
-  const pct    = result?.percentage ?? 0;
-
-  const topicData    = computeTopicData(assignment, studentAnswers);
-  const hasTopicData = Object.keys(topicData).length > 0;
-  const summary      = hasTopicData ? generatePerformanceSummary(result, topicData) : '';
-
-  const scoreColor = pct >= 70 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444';
-
-  const sectionStats = (result?.sectionResponses || []).map(sr => {
-    const label  = sr.sid === 'rw' ? 'Reading & Writing' : 'Mathematics';
-    const color  = sr.sid === 'rw' ? '#0891b2' : '#7c3aed';
-    const mods   = (sr.moduleResponses || []).map(mr => ({
-      ...mr,
-      pct:    mr.totalQuestions > 0 ? Math.round((mr.correctAnswers / mr.totalQuestions) * 100) : 0,
-      timing: moduleTimings.find(t => t.sectionId === sr.sid && t.moduleNum === mr.moduleNumber),
-    }));
-    const totalCorrect = mods.reduce((a, m) => a + (m.correctAnswers || 0), 0);
-    const totalQ       = mods.reduce((a, m) => a + (m.totalQuestions || 0), 0);
-    return { label, color, sid: sr.sid, mods, sectionPct: totalQ > 0 ? Math.round((totalCorrect / totalQ) * 100) : 0, totalCorrect, totalQ };
-  });
-
-  return (
-      <div className="page-content">
-        {/* Header row */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-              onClick={onBack}
-              className="flex items-center gap-1.5 text-sm text-indigo-600 font-semibold hover:text-indigo-800 transition-colors"
-          >
-            <ChevronLeft size={16} /> Back to Assignments
-          </button>
-          <button
-              onClick={() => openResultReport(result, assignment, topicData, summary, moduleTimings)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-700 hover:bg-slate-900 transition-colors"
-          >
-            ⬇ Download Report
-          </button>
-        </div>
-
-        <div className="max-w-2xl mx-auto space-y-4">
-
-          {/* ── Score Overview ── */}
-          <div className="card py-6 px-6">
-            <div className="flex items-center gap-6">
-              <DonutChart percentage={pct} color={scoreColor} />
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-slate-900 mb-1">
-                  {isGuest ? 'Assessment Complete!' : passed ? 'Test Passed! 🎉' : 'Test Completed 📚'}
-                </h2>
-                <p className="text-xs text-slate-400 mb-3">{assignment.title}</p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-                    <p className="text-xl font-extrabold text-slate-900 leading-none">
-                      {result?.overallScore ?? 0}
-                      <span className="text-sm font-semibold text-slate-400"> / {result?.maxScore ?? 0}</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-1">Points</p>
-                  </div>
-                  {!isGuest ? (
-                      <div className={`rounded-xl px-3 py-2.5 ${passed ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                        <div className={`flex items-center gap-1.5 text-sm font-bold ${passed ? 'text-emerald-700' : 'text-red-600'}`}>
-                          {passed ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                          {passed ? 'Passed' : 'Not passed'}
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">Pass mark: {assignment.passingScore}%</p>
-                      </div>
-                  ) : (
-                      <div className="bg-indigo-50 rounded-xl px-3 py-2.5">
-                        <p className="text-xl font-extrabold text-indigo-600 leading-none">{pct}%</p>
-                        <p className="text-[11px] text-slate-400 mt-1">Your Score</p>
-                      </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Section Performance ── */}
-          {sectionStats.length > 0 && (
-              <div className="card py-5 px-6">
-                <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Section Performance</p>
-                <div className="space-y-5">
-                  {sectionStats.map((sec) => (
-                      <div key={sec.sid}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-bold text-slate-700">{sec.label}</span>
-                          <span className="text-sm font-bold" style={{ color: sec.color }}>
-                      {sec.totalCorrect}/{sec.totalQ} &nbsp;·&nbsp; {sec.sectionPct}%
-                    </span>
-                        </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
-                          <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: chartsReady ? `${sec.sectionPct}%` : '0%',
-                                background: sec.color,
-                                transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
-                              }}
-                          />
-                        </div>
-                        <div className={`grid gap-2 ${sec.mods.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                          {sec.mods.map((mr) => (
-                              <div key={mr.moduleNumber} className="bg-slate-50 rounded-xl px-3 py-2.5">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-[11px] font-bold text-slate-600">Module {mr.moduleNumber}</span>
-                                  <span className="text-[11px] font-bold" style={{ color: sec.color }}>{mr.pct}%</span>
-                                </div>
-                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1.5">
-                                  <div
-                                      className="h-full rounded-full"
-                                      style={{
-                                        width: chartsReady ? `${mr.pct}%` : '0%',
-                                        background: sec.color,
-                                        transition: `width 1s cubic-bezier(.4,0,.2,1) ${mr.moduleNumber * 120}ms`,
-                                      }}
-                                  />
-                                </div>
-                                <div className="flex justify-between text-[10px] text-slate-400">
-                                  <span>{mr.correctAnswers}/{mr.totalQuestions} correct · {mr.score} pts</span>
-                                  {mr.timing && (
-                                      <span className="flex items-center gap-1 text-indigo-400 font-medium">
-                              <Clock size={8} />
-                                        {formatTime(mr.timing.timeUsed)} / {formatTime(mr.timing.timeLimit)}
-                            </span>
-                                  )}
-                                </div>
-                              </div>
-                          ))}
-                        </div>
-                      </div>
-                  ))}
-                </div>
-              </div>
-          )}
-
-          {/* ── Performance Insights ── */}
-          {summary && (
-              <div className="card py-5 px-5" style={{ background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)', border: '1px solid #86efac' }}>
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-base shrink-0 text-white font-bold">✦</div>
-                  <div>
-                    <p className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-widest mb-2">Performance Insights</p>
-                    <p className="text-sm text-emerald-900 leading-relaxed">{summary}</p>
-                  </div>
-                </div>
-              </div>
-          )}
-
-          {/* Guest CTA */}
-          {isGuest && (
-              <div className="card py-5 px-6" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-                <p className="text-sm font-bold text-amber-800 mb-1">What's next?</p>
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  Our team will review your results and reach out to help you build a personalised SAT prep plan.
-                  Unlock the full platform to access mentor sessions, practice tests, and more.
-                </p>
-              </div>
-          )}
-
-          {/* ── Topic Mastery ── */}
-          {hasTopicData && (
-              <div className="flex flex-col gap-3">
-                {Object.entries(topicData).map(([groupName, topics]) => (
-                    <div key={groupName} className="card overflow-hidden">
-                      <div className="bg-slate-800 px-4 py-3">
-                        <p className="text-sm font-bold text-white">{groupName}</p>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto_140px] bg-slate-700 px-4 py-2">
-                        <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest">Topic</span>
-                        <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest text-center px-4">Mastery</span>
-                        <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest text-right">Score</span>
-                      </div>
-                      {Object.entries(topics).map(([topic, data]) => {
-                        const tp     = data.maxScore > 0 ? Math.round((data.score / data.maxScore) * 100) : 0;
-                        const mastery = getMasteryLevel(tp);
-                        return (
-                            <div key={topic} className="grid grid-cols-[1fr_auto_140px] items-center px-4 py-3 border-t border-slate-100 bg-white hover:bg-slate-50/50">
-                              <p className="text-[13px] text-slate-700">{topic}</p>
-                              <span
-                                  className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mx-4"
-                                  style={{ background: mastery.bg, color: mastery.color }}
-                              >
-                        {mastery.label}
-                      </span>
-                              <div className="flex items-center gap-1.5">
-                                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full" style={{ width: `${tp}%`, background: mastery.bar }} />
-                                </div>
-                                <span className="text-[10px] font-bold shrink-0 w-8 text-right" style={{ color: mastery.bar }}>
-                          {tp > 0 ? `${tp}%` : ''}
-                        </span>
-                              </div>
-                            </div>
-                        );
-                      })}
-                    </div>
-                ))}
-
-                <div className="card overflow-hidden">
-                  <button
-                      onClick={() => setShowMasteryDesc((p) => !p)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <span className="text-xs font-bold text-slate-700">Mastery Level Descriptions</span>
-                    <span className="text-slate-400 text-sm">{showMasteryDesc ? '∧' : '∨'}</span>
-                  </button>
-                  {showMasteryDesc && (
-                      <div className="px-4 pb-4 pt-1 bg-white space-y-3 border-t border-slate-100">
-                        {MASTERY_DESCRIPTIONS.map((m) => (
-                            <div key={m.label}>
-                              <p className="text-xs font-extrabold" style={{ color: m.color }}>
-                                {m.label} <span className="font-normal text-slate-400">· Score {m.range}</span>
-                              </p>
-                              <p className="text-[11px] text-slate-500 mt-0.5">{m.desc}</p>
-                            </div>
-                        ))}
-                      </div>
-                  )}
-                </div>
-              </div>
-          )}
-
-        </div>
-      </div>
-  );
+  // Share the full flat answers dict for every module.
+  // The modal iterates only over that module's questions when looking up answers,
+  // so unrelated keys from other modules are simply ignored.
+  return {
+    studentName: student?.name || student?.displayName || 'You',
+    batchName:   '',
+    avatar:      (student?.name || student?.displayName || 'S').slice(0, 2).toUpperCase(),
+    score:       result?.overallScore ?? result?.score ?? 0,
+    maxScore:    result?.maxScore ?? 0,
+    percentage:  result?.percentage ?? 0,
+    passed:      result?.passed ?? false,
+    completedAt: result?.completedAt || result?.updatedAt || new Date().toISOString(),
+    sectionResults: (result?.sectionResponses || []).map(sr => {
+      const section = (assignment.sections || []).find(
+        s => (s.sid || s.id) === sr.sid,
+      );
+      return {
+        sectionId:   sr.sid,
+        sectionName: section?.name || (sr.sid === 'rw' ? 'Reading & Writing' : 'Mathematics'),
+        modules: (sr.moduleResponses || []).map(mr => {
+          const timing = moduleTimings.find(
+            t => t.sectionId === sr.sid && t.moduleNum === mr.moduleNumber,
+          );
+          return {
+            moduleNumber: mr.moduleNumber,
+            score:        mr.score ?? 0,
+            maxScore:     mr.maxScore ?? mr.totalQuestions ?? 0,
+            timeTaken:    timing ? Math.round(timing.timeUsed / 60) : null,
+            answers,  // share full flat dict — no per-module filtering needed
+          };
+        }),
+      };
+    }),
+  };
 }
 
 // ── Main Test Taker ──────────────────────────────────────────
@@ -812,7 +476,14 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
   const [phase,                 setPhase]                 = useState(alreadySubmitted ? 'result' : inProgress ? 'test' : 'start');
   const [responseId,            setResponseId]            = useState(inProgress ? initialResponse._id : null);
   const [result,                setResult]                = useState(alreadySubmitted ? initialResponse : null);
-  const [assignmentWithAnswers, setAssignmentWithAnswers] = useState(null);
+  // If the full response (from detail endpoint) includes assignment sections with correct
+  // answers, use them straight away — same as the post-submit flow.
+  // getResponseById populates assignmentId.sections with correctAnswer included.
+  const [assignmentWithAnswers, setAssignmentWithAnswers] = useState(
+    initialResponse?.assignmentId?.sections
+      ? { ...assignment, sections: initialResponse.assignmentId.sections }
+      : null,
+  );
   const [error,                 setError]                 = useState('');
 
   // Navigation
@@ -902,8 +573,8 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
       }));
       const res = await assignmentService.submit(responseIdRef.current, { sectionResponses });
       setResult(res.data);
-      if (res.assignmentSections) {
-        setAssignmentWithAnswers({ ...assignment, sections: res.assignmentSections });
+      if (res.data?.assignmentId?.sections) {
+        setAssignmentWithAnswers({ ...assignment, sections: res.data.assignmentId.sections });
       }
       setPhase('result');
     } catch (e) {
@@ -962,16 +633,23 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
   }, [timeLeft, phase, advanceModule]);
 
   // ── Phase guards ──
-  if (phase === 'result') return (
-      <ResultScreen
-          result={result}
-          assignment={assignmentWithAnswers || assignment}
-          isGuest={isGuest}
-          onBack={onBack}
-          moduleTimings={moduleTimings}
-          studentAnswers={finalAnswers}
+  if (phase === 'result') {
+    const attempt = buildAttemptFromResult(
+      result,
+      assignmentWithAnswers || assignment,
+      finalAnswers,
+      moduleTimings,
+      student,
+    );
+    return (
+      <StudentReportModal
+        attempt={attempt}
+        assignment={assignmentWithAnswers || assignment}
+        onClose={onBack}
+        isStudentView
       />
-  );
+    );
+  }
   if (phase === 'start')  return <StartScreen assignment={assignment} onBegin={handleBegin} onBack={onBack} error={error} isGuest={isGuest} />;
   if (phase === 'submitting') {
     return (

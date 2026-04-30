@@ -40,11 +40,12 @@ export const studentService = {
 };
 
 export const assignmentService = {
-  getByBatch:   (batchId)      => req(`/assignments/batch/${batchId}`),
-  getForGuest:  ()             => req('/assignments/guest'),
-  getResponses: (studentId)    => req(`/assignment-responses?studentId=${studentId}`),
-  start:        (payload)      => req('/assignment-responses', { method: 'POST', body: JSON.stringify(payload) }),
-  submit:       (id, payload)  => req(`/assignment-responses/${id}/submit`, { method: 'POST', body: JSON.stringify(payload) }),
+  getByBatch:    (batchId)      => req(`/assignments/batch/${batchId}`),
+  getForGuest:   ()             => req('/assignments/guest'),
+  getResponses:  (studentId)    => req(`/assignment-responses?studentId=${studentId}`),
+  getResponse:   (id)           => req(`/assignment-responses/${id}`),
+  start:         (payload)      => req('/assignment-responses', { method: 'POST', body: JSON.stringify(payload) }),
+  submit:        (id, payload)  => req(`/assignment-responses/${id}/submit`, { method: 'POST', body: JSON.stringify(payload) }),
 };
 
 export const chatService = {
