@@ -236,7 +236,19 @@ export default function Assignments({ student }) {
     else loadStudentAssignments();
   }, [student]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleStart = (assignment) => {
+  const handleStart = async (assignment) => {
+    // For completed assignments, fetch the full response (with per-question answers
+    // and correct answers) before opening the result modal.
+    if (assignment._response?.status === 'submitted' && assignment._response?._id) {
+      try {
+        const res = await assignmentService.getResponse(assignment._response._id);
+        const fullResponse = res.data || res;
+        setTakingTest({ assignment, batchId: assignment._batchId, fullResponse });
+        return;
+      } catch {
+        // Fall through — open with the lightweight response we already have.
+      }
+    }
     setTakingTest({ assignment, batchId: assignment._batchId });
   };
 
@@ -253,7 +265,7 @@ export default function Assignments({ student }) {
         assignment={takingTest.assignment}
         student={student}
         batchId={takingTest.batchId}
-        initialResponse={takingTest.assignment._response}
+        initialResponse={takingTest.fullResponse || takingTest.assignment._response}
         onBack={handleBack}
       />
     );
