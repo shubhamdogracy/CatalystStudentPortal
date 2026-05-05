@@ -48,6 +48,15 @@ export const assignmentService = {
   submit:        (id, payload)  => req(`/assignment-responses/${id}/submit`, { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+export const satService = {
+  getMyAssignments: (studentId)            => req(`/sat/test/assignments?studentId=${studentId}`),
+  startSession:     (assignmentId)         => req('/sat/test/start', { method: 'POST', body: JSON.stringify({ assignment_id: assignmentId }) }),
+  submitModule1:    (sessionId, answers)   => req(`/sat/test/${sessionId}/module/1/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
+  getModule2:       (sessionId)            => req(`/sat/test/${sessionId}/module/2`),
+  submitModule2:    (sessionId, answers)   => req(`/sat/test/${sessionId}/module/2/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
+  getResults:       (sessionId)            => req(`/sat/test/${sessionId}/results`),
+};
+
 export const chatService = {
   getConversations: (userId)              => req(`/chat/conversations/${userId}`),
   getMessages:      (userId, otherId, page = 1) => req(`/chat/messages/${userId}/${otherId}?page=${page}`),
