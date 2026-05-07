@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, Clock } from 'lucide-react';
+import { ChevronLeft, Clock, Calculator as CalcIcon, Bookmark, ChevronDown } from 'lucide-react';
 import { satService } from '../../services/api';
 import { StudentReportModal } from './StudentReportModal';
+import DesmosCalculator from './DesmosCalculator';
+import MathReferencesPanel from './MathReferencesPanel';
 
 function formatTime(secs) {
   const m = Math.floor(secs / 60);
@@ -118,32 +120,63 @@ function buildReportData({ subject, testName, studentName, m1Data, m2Data }) {
 }
 
 // ── Question view ────────────────────────────────────────────
-function QuestionView({ question, answers, onAnswer, index, total }) {
+// Renders only the question header + choices; description/passage is handled at layout level.
+function QuestionView({ question, answers, onAnswer, index, markedIds, onToggleMark, onOpenNotes, noteCount, showTitle }) {
   const selected = answers[question._id];
+  const isMarked = markedIds?.has(question._id);
+
   return (
-    <div className="flex flex-col gap-5 max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0">
+    <div className="flex flex-col gap-4">
+      {/* Question header row */}
+      <div className="flex items-center gap-2.5 py-2.5 px-3 rounded-xl" style={{ backgroundColor: '#F2F2F2' }}>
+        <span
+          className="w-8 h-8 text-sm font-extrabold rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+        >
           {index + 1}
         </span>
-        <span>Question {index + 1} of {total}</span>
-        {question.topic && (
-          <span className="ml-2 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 font-semibold">
-            {question.topic}
-          </span>
-        )}
+        <button
+          onClick={() => onToggleMark?.(question._id)}
+          className="flex items-center gap-1.5 text-[12px] font-semibold transition-colors"
+          style={{ color: isMarked ? '#80AF81' : '#2A2A2A99' }}
+        >
+          <Bookmark size={13} fill={isMarked ? '#80AF81' : 'none'} stroke={isMarked ? '#80AF81' : 'currentColor'} strokeWidth={2} />
+          Mark for Review
+        </button>
+        <div className="flex-1" />
+        <button className="text-[11px] font-semibold transition-colors hover:opacity-70" style={{ color: '#ef4444' }}>
+          Report Issue
+        </button>
+        <button
+          onClick={() => onOpenNotes?.()}
+          className="px-2.5 py-1 rounded border text-[11px] font-bold tracking-wide transition-colors"
+          style={
+            noteCount > 0
+              ? { borderColor: '#80AF81', backgroundColor: '#80AF8115', color: '#80AF81' }
+              : { borderColor: '#e5e7eb', color: '#2A2A2A99', backgroundColor: '#FFFFFF' }
+          }
+        >
+          {noteCount > 0 ? `📝 ${noteCount}` : 'ABC'}
+        </button>
       </div>
 
-      <p className="text-[15px] text-gray-900 font-medium leading-relaxed">{question.title}</p>
-
-      {question.description && (
-        <div
-          className="text-sm text-gray-600 leading-relaxed border-l-2 border-indigo-200 pl-4 bg-indigo-50/40 rounded-r-xl py-3 pr-4"
-          dangerouslySetInnerHTML={{ __html: question.description }}
-        />
+      {/* Topic tag */}
+      {question.topic && (
+        <span
+          className="self-start text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+          style={{ color: '#80AF81', backgroundColor: '#80AF8115', border: '1px solid #80AF8140' }}
+        >
+          {question.topic}
+        </span>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      {/* Question title — only shown on right when description/passage is on the left */}
+      {showTitle && (
+        <p className="text-[14px] font-medium leading-relaxed mb-1" style={{ color: '#2A2A2A' }}>{question.title}</p>
+      )}
+
+      {/* Answer choices */}
+      <div className="flex flex-col gap-3">
         {['A', 'B', 'C', 'D'].map((opt) => {
           const label = question.choices?.[opt];
           if (!label) return null;
@@ -152,23 +185,180 @@ function QuestionView({ question, answers, onAnswer, index, total }) {
             <button
               key={opt}
               onClick={() => onAnswer(question._id, opt)}
-              className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-all"
+              style={
                 isSelected
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-gray-50'
-              }`}
+                  ? { borderColor: '#80AF81', backgroundColor: '#80AF8110' }
+                  : { borderColor: '#e5e7eb', backgroundColor: '#FFFFFF' }
+              }
             >
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'
-              }`}>
+              <span
+                className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 transition-all"
+                style={
+                  isSelected
+                    ? { backgroundColor: '#80AF81', borderColor: '#80AF81', color: '#FFFFFF' }
+                    : { borderColor: '#d1d5db', color: '#2A2A2A99', backgroundColor: '#FFFFFF' }
+                }
+              >
                 {opt}
               </span>
-              <span className={`text-sm flex-1 ${isSelected ? 'text-indigo-900 font-medium' : 'text-gray-700'}`}>
+              <span
+                className="text-sm flex-1 leading-relaxed"
+                style={{ color: '#2A2A2A', fontWeight: isSelected ? 600 : 400 }}
+              >
                 {label}
               </span>
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ── Notes modal ─────────────────────────────────────────────
+function NotesModal({ qid, notes, onAdd, onDelete, onClose }) {
+  const [draft, setDraft] = useState('');
+  const myNotes = notes[qid] || [];
+
+  const handleAdd = () => {
+    if (!draft.trim()) return;
+    onAdd(qid, draft.trim());
+    setDraft('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#F2F2F2', background: 'linear-gradient(135deg, #f0f7f0, #f9fdf9)' }}>
+          <div>
+            <h3 className="text-sm font-bold" style={{ color: '#2A2A2A' }}>Notes for this question</h3>
+            <p className="text-[11px] mt-0.5" style={{ color: '#2A2A2A99' }}>Ctrl+Enter to save quickly</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold transition-colors hover:bg-gray-100"
+            style={{ color: '#2A2A2A99', backgroundColor: '#F2F2F2' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Existing notes */}
+        <div className="p-5 space-y-2 max-h-56 overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
+          {myNotes.length === 0 && (
+            <p className="text-xs text-center py-4" style={{ color: '#2A2A2A66' }}>
+              No notes yet. Add your first note below.
+            </p>
+          )}
+          {myNotes.map((note, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+              style={{ backgroundColor: '#80AF8115', border: '1px solid #80AF8130' }}
+            >
+              <p className="flex-1 text-xs leading-relaxed" style={{ color: '#2A2A2A' }}>{note}</p>
+              <button
+                onClick={() => onDelete(qid, i)}
+                className="text-xs shrink-0 mt-0.5 transition-colors hover:opacity-70"
+                style={{ color: '#2A2A2A66' }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Input area */}
+        <div className="px-5 pb-5 space-y-2" style={{ backgroundColor: '#FFFFFF' }}>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) handleAdd(); }}
+            placeholder="Write a note for this question…"
+            className="w-full rounded-xl px-3 py-2 text-xs resize-none focus:outline-none transition-colors"
+            style={{
+              border: '1.5px solid #e5e7eb',
+              color: '#2A2A2A',
+              backgroundColor: '#F2F2F2',
+            }}
+            rows={3}
+          />
+          <button
+            onClick={handleAdd}
+            disabled={!draft.trim()}
+            className="w-full py-2.5 rounded-xl text-xs font-bold transition-opacity disabled:opacity-40"
+            style={{ backgroundColor: '#80AF81', color: '#FFFFFF' }}
+          >
+            Save Note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Question picker bottom sheet ────────────────────────────
+function QuestionPicker({ questions, currentIdx, answers, markedIds, onSelect, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[150] bg-black/40 flex items-end justify-center pb-6" onClick={onClose}>
+      <div
+        className="rounded-3xl w-full max-w-2xl mx-4 p-5 shadow-2xl"
+        style={{ backgroundColor: '#FFFFFF' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ backgroundColor: '#F2F2F2' }} />
+
+        <p className="text-[11px] font-extrabold uppercase tracking-widest mb-3" style={{ color: '#80AF81' }}>
+          Jump to Question
+        </p>
+
+        <div className="grid grid-cols-8 gap-2 mb-5">
+          {questions.map((q, i) => {
+            const qid       = q._id || q.qid;
+            const answered  = !!answers[qid];
+            const marked    = markedIds?.has(qid);
+            const isCurrent = i === currentIdx;
+            return (
+              <button
+                key={qid}
+                onClick={() => { onSelect(i); onClose(); }}
+                style={
+                  isCurrent
+                    ? { backgroundColor: '#80AF81', color: '#FFFFFF' }
+                    : answered
+                      ? { backgroundColor: '#80AF8120', color: '#80AF81', border: '1px solid #80AF8140' }
+                      : { backgroundColor: '#F2F2F2', color: '#2A2A2A', border: '1px solid #e5e7eb' }
+                }
+                className="aspect-square rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-0.5 transition-all hover:opacity-80"
+              >
+                <span>{i + 1}</span>
+                {marked && <span className="text-[8px] leading-none">🔖</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-4 text-[10px] font-semibold mb-5" style={{ color: '#2A2A2A99' }}>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#80AF8120', border: '1px solid #80AF8140' }} />
+            Answered
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#F2F2F2', border: '1px solid #e5e7eb' }} />
+            Unanswered
+          </span>
+          <span className="flex items-center gap-1.5">🔖 Marked for Review</span>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-bold transition-colors"
+          style={{ backgroundColor: '#F2F2F2', color: '#2A2A2A' }}
+        >
+          Close
+        </button>
       </div>
     </div>
   );
@@ -234,6 +424,24 @@ export default function AdaptiveSATTestTaker({ satAssignment, student, onBack })
   const [m1Result,    setM1Result]    = useState(null);
   const [reportData,  setReportData]  = useState(null);
   const [error,       setError]       = useState('');
+  const [showCalc,        setShowCalc]        = useState(false);
+  const [showMathRef,     setShowMathRef]     = useState(false);
+  const [showTimer,       setShowTimer]       = useState(true);
+  const [showMore,        setShowMore]        = useState(false);
+  const [showPicker,      setShowPicker]      = useState(false);
+  const [showNotes,       setShowNotes]       = useState(false);
+  const [notes,           setNotes]           = useState({});
+  const [markedForReview, setMarkedForReview] = useState(new Set());
+
+  const addNote    = (qid, text) => setNotes((prev) => ({ ...prev, [qid]: [...(prev[qid] || []), text] }));
+  const deleteNote = (qid, idx)  => setNotes((prev) => ({ ...prev, [qid]: (prev[qid] || []).filter((_, i) => i !== idx) }));
+
+  const toggleMark = (qid) =>
+    setMarkedForReview((prev) => {
+      const next = new Set(prev);
+      next.has(qid) ? next.delete(qid) : next.add(qid);
+      return next;
+    });
 
   const submittingRef  = useRef(false);
   const sessionRef     = useRef(null);
@@ -448,81 +656,258 @@ export default function AdaptiveSATTestTaker({ satAssignment, student, onBack })
   const currentQuestion = questions[questionIdx];
   if (!currentQuestion) return null;
 
-  const isLastQuestion = questionIdx === questions.length - 1;
-  const timerCls =
-    timeLeft <= 120 ? 'text-red-600 animate-pulse' :
-    timeLeft <= 300 ? 'text-amber-600' : 'text-slate-600';
+  const isLastQuestion  = questionIdx === questions.length - 1;
+  // Always split — description (or title when no description) on left, choices on right
+  const hasDescription  = !!currentQuestion.description;
+  const sectionLabel    = subject === 'math' ? 'Mathematics' : 'Reading and Writing';
+  const moduleLabel     = phase === 'module1' ? 'Module 1' : 'Module 2';
+
+  const timerColor = timeLeft <= 120 ? '#ef4444' : timeLeft <= 300 ? '#d97706' : '#2A2A2A';
+  const timerCls   = timeLeft <= 120 ? 'animate-pulse' : '';
+
+  // Colorful dashed SAT-style divider
+  const SATDivider = () => {
+    const colors = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6'];
+    return (
+      <div className="flex h-[3px]">
+        {colors.map((color, i) => (
+          <div key={i} className="flex-1 border-t-2 border-dashed" style={{ borderColor: color }} />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="page-content">
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-        <button
-          onClick={() => { if (window.confirm('Exit the test? Your progress will be lost.')) onBack(); }}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          <ChevronLeft size={16} /> Exit
-        </button>
+    <div className="absolute inset-0 bg-white flex flex-col select-none overflow-hidden z-[60]">
+      {/* Floating panels — math subject only */}
+      {showCalc    && subject === 'math' && <DesmosCalculator   onClose={() => setShowCalc(false)}    />}
+      {showMathRef && subject === 'math' && <MathReferencesPanel onClose={() => setShowMathRef(false)} />}
 
-        <div className="text-center">
-          <p className="text-xs font-bold text-indigo-600 truncate max-w-[180px]">
-            {testName} · {phase === 'module1' ? 'Module 1' : 'Module 2'}
-          </p>
-          <div className={`flex items-center justify-center gap-1.5 text-sm font-bold mt-0.5 ${timerCls}`}>
-            <Clock size={14} />
-            {formatTime(timeLeft)}
+      {/* More menu backdrop */}
+      {showMore && <div className="fixed inset-0 z-[100]" onClick={() => setShowMore(false)} />}
+
+      {/* Question picker */}
+      {showPicker && (
+        <QuestionPicker
+          questions={questions}
+          currentIdx={questionIdx}
+          answers={answers}
+          markedIds={markedForReview}
+          onSelect={(i) => setQuestionIdx(i)}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {/* Notes modal */}
+      {showNotes && (
+        <NotesModal
+          qid={currentQuestion._id}
+          notes={notes}
+          onAdd={addNote}
+          onDelete={deleteNote}
+          onClose={() => setShowNotes(false)}
+        />
+      )}
+
+      {/* ── TOP BAR ── */}
+      <div className="shrink-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-3 gap-4">
+
+          {/* Left: Section name + module + Directions */}
+          <div className="flex flex-col gap-0.5 min-w-[180px]">
+            <p className="text-[15px] font-extrabold text-gray-900 leading-tight">{sectionLabel}</p>
+            <p className="text-[11px] text-gray-500 font-medium">{moduleLabel}</p>
+            <button
+              onClick={() => { if (window.confirm('Exit the test? Your progress may be lost.')) onBack(); }}
+              className="self-start mt-1.5 flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <ChevronLeft size={10} /> Exit
+            </button>
+          </div>
+
+          {/* Center: Large timer */}
+          <div className="flex flex-col items-center flex-1">
+            {showTimer ? (
+              <span
+                className={`text-[30px] font-extrabold tracking-tight leading-none ${timerCls}`}
+                style={{ color: timerColor }}
+              >
+                {formatTime(timeLeft)}
+              </span>
+            ) : (
+              <span className="text-sm font-semibold" style={{ color: '#2A2A2A99' }}>Timer hidden</span>
+            )}
+            <button
+              onClick={() => setShowTimer((p) => !p)}
+              className="mt-1.5 px-4 py-0.5 rounded-full border text-[11px] font-semibold transition-colors hover:bg-gray-50"
+              style={{ borderColor: '#e5e7eb', color: '#2A2A2A' }}
+            >
+              {showTimer ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {/* Right: Tool buttons + More */}
+          <div className="flex items-center gap-0.5 min-w-[180px] justify-end">
+            {subject === 'math' && (
+              <>
+                <button
+                  onClick={() => setShowCalc((p) => !p)}
+                  className={`flex flex-col items-center justify-center gap-[3px] px-3 py-2 rounded-xl transition-all ${
+                    showCalc
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <CalcIcon size={17} className="shrink-0" />
+                  <span className="text-[10px] font-semibold leading-none">Calculator</span>
+                </button>
+
+                <button
+                  onClick={() => setShowMathRef((p) => !p)}
+                  className={`flex flex-col items-center justify-center gap-[3px] px-3 py-2 rounded-xl transition-all ${
+                    showMathRef
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <span className="font-bold italic leading-none" style={{ fontFamily: 'Georgia, serif', fontSize: 17 }}>
+                    f<span style={{ fontSize: 11, verticalAlign: 'sub' }}>x</span>
+                  </span>
+                  <span className="text-[10px] font-semibold leading-none">References</span>
+                </button>
+              </>
+            )}
+
+            {/* More (⋮) — always visible */}
+            <div className="relative z-[110]">
+              <button
+                onClick={() => setShowMore((p) => !p)}
+                className="flex flex-col items-center justify-center gap-[2px] px-3 py-2 rounded-xl transition-all"
+                style={showMore
+                  ? { backgroundColor: '#F2F2F2', color: '#2A2A2A' }
+                  : { color: '#2A2A2A99' }
+                }
+              >
+                <span className="font-black leading-none" style={{ fontSize: 20, letterSpacing: 1 }}>⋮</span>
+                <span className="text-[10px] font-semibold leading-none">More</span>
+              </button>
+              {showMore && (
+                <div className="absolute right-0 top-11 z-[110] rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #e5e7eb', width: '200px' }}>
+                  <button
+                    onClick={() => { setShowMore(false); setShowNotes(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-gray-50"
+                    style={{ color: '#2A2A2A' }}
+                  >
+                    <span className="text-base">📝</span>
+                    <span className="font-semibold">Add Notes</span>
+                  </button>
+                  <div style={{ borderTop: '1px solid #F2F2F2' }} />
+                  <button
+                    onClick={() => { setShowMore(false); if (phase === 'module1') submitM1(); else submitM2(); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-red-50"
+                    style={{ color: '#ef4444' }}
+                  >
+                    <span className="text-base">✅</span>
+                    <span className="font-semibold">Submit Test</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <SATDivider />
+      </div>
+
+      {/* ── CONTENT AREA — always split left / right ── */}
+      <div className="flex-1 overflow-hidden flex flex-row" style={{ backgroundColor: '#F2F2F2' }}>
+
+        {/* ── LEFT PANEL: description/passage OR question title ── */}
+        <div className="w-1/2 h-full overflow-y-auto border-r" style={{ backgroundColor: '#FFFFFF', borderColor: '#e5e7eb' }}>
+          <div className="p-8">
+            {hasDescription ? (
+              <div
+                className="text-sm leading-7 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-gray-200 [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-gray-50 [&_th]:font-semibold [&_p]:mb-2"
+                style={{ color: '#2A2A2A' }}
+                dangerouslySetInnerHTML={{ __html: currentQuestion.description }}
+              />
+            ) : (
+              <p className="text-[15px] font-medium leading-relaxed" style={{ color: '#2A2A2A' }}>
+                {currentQuestion.title}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="text-xs font-semibold text-gray-400">
-          {questionIdx + 1} / {questions.length}
+        {/* ── RIGHT PANEL: header + (title if description) + choices ── */}
+        <div className="w-1/2 h-full overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
+          <div className="p-6 pt-5">
+            <QuestionView
+              question={currentQuestion}
+              answers={answers}
+              onAnswer={handleAnswer}
+              index={questionIdx}
+              total={questions.length}
+              markedIds={markedForReview}
+              onToggleMark={toggleMark}
+              showTitle={hasDescription}
+              onOpenNotes={() => setShowNotes(true)}
+              noteCount={(notes[currentQuestion._id] || []).length}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-100 rounded-full mb-6 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${((questionIdx + 1) / questions.length) * 100}%`,
-            background: 'linear-gradient(90deg, #4f46e5, #7c3aed)',
-          }}
-        />
-      </div>
+      {/* ── BOTTOM BAR ── */}
+      <div className="shrink-0 bg-white">
+        <SATDivider />
+        <div className="flex items-center px-4 py-3 gap-2">
 
-      {/* Question */}
-      <QuestionView
-        question={currentQuestion}
-        answers={answers}
-        onAnswer={handleAnswer}
-        index={questionIdx}
-        total={questions.length}
-      />
+          {/* Left: Back button */}
+          <div className="flex-1 flex justify-start">
+            <button
+              onClick={() => setQuestionIdx((i) => i - 1)}
+              disabled={questionIdx === 0}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+              style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+            >
+              Back
+            </button>
+          </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-200">
-        <button
-          onClick={() => setQuestionIdx((i) => i - 1)}
-          disabled={questionIdx === 0}
-          className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 disabled:opacity-40 transition-colors hover:border-gray-300"
-        >
-          ← Back
-        </button>
+          {/* Center: Question picker — accent green */}
+          <button
+            onClick={() => setShowPicker(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#80AF81', color: '#FFFFFF' }}
+          >
+            Question {questionIdx + 1} of {questions.length}
+            <ChevronDown size={14} />
+          </button>
 
-        <button
-          onClick={handleNext}
-          disabled={submittingRef.current}
-          className="px-5 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-60 transition-all hover:-translate-y-0.5"
-          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}
-        >
-          {isLastQuestion
-            ? phase === 'module1' ? 'Submit Module 1 →' : 'Submit Test ✓'
-            : 'Next →'}
-        </button>
+          {/* Right: Next / Submit */}
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={handleNext}
+              disabled={submittingRef.current}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60 transition-colors shadow-sm"
+              style={
+                isLastQuestion
+                  ? { backgroundColor: '#80AF81', color: '#FFFFFF' }
+                  : { backgroundColor: '#2A2A2A', color: '#FFFFFF' }
+              }
+            >
+              {isLastQuestion
+                ? phase === 'module1' ? 'Submit Module 1' : 'Submit Test'
+                : 'Next'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <p className="mt-4 text-sm text-red-500 text-center">{error}</p>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs font-bold px-5 py-3 rounded-xl shadow-xl z-[300]">
+          {error}
+        </div>
       )}
     </div>
   );
