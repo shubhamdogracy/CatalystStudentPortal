@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { satService } from '../../services/api';
 import MathContent from '../../components/common/MathContent';
 
@@ -89,6 +89,7 @@ export default function PracticeAssignmentTaker({ assignment, onBack }) {
   const [results,   setResults]   = useState(null);
   const [error,     setError]     = useState('');
   const timerRef = useRef(null);
+  const handleSubmitRef = useRef(null);
 
   useEffect(() => {
     satService.startPractice(config._id, assignment._id)
@@ -104,14 +105,7 @@ export default function PracticeAssignmentTaker({ assignment, onBack }) {
       .catch(e => { setError(e.message); setPhase('error'); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (phase !== 'taking' || timeLeft === null) return;
-    if (timeLeft <= 0) { handleSubmit(); return; }
-    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-    return () => clearTimeout(timerRef.current);
-  }); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     clearTimeout(timerRef.current);
     setPhase('submitting');
     const payload = questions.map(q => ({ question_id: q._id || q.id, selected: answers[q._id || q.id] || null }));
@@ -120,7 +114,18 @@ export default function PracticeAssignmentTaker({ assignment, onBack }) {
       setResults(res);
       setPhase('results');
     } catch (e) { setError(e.message); setPhase('error'); }
-  };
+  }, [questions, sessionId, answers]);
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
+  useEffect(() => {
+    if (phase !== 'taking' || timeLeft === null) return;
+    if (timeLeft <= 0) { handleSubmitRef.current(); return; }
+    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  });
 
   if (phase === 'loading')    return <div className="page-content flex items-center justify-center py-32 text-slate-400 text-sm">Starting practice test…</div>;
   if (phase === 'submitting') return <div className="page-content flex items-center justify-center py-32 text-slate-400 text-sm">Submitting…</div>;

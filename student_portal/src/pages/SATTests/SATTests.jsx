@@ -182,7 +182,7 @@ function AdaptiveTaker({ config, onFinish }) {
       setPhase('results');
     } catch (e) { setError(e.message); setPhase('module2'); }
     finally { submittingRef.current = false; }
-  }, []); // eslint-disable-line
+  }, []);
 
   if (phase === 'loading') return <div className="flex items-center justify-center py-32 text-slate-400 text-sm">Starting test…</div>;
   if (phase === 'error')   return <div className="flex flex-col items-center py-32 gap-4"><p className="text-red-600 text-sm">{error}</p><button onClick={onFinish} className="px-4 py-2 rounded-xl bg-slate-100 text-sm font-semibold text-slate-700">Back</button></div>;
@@ -271,47 +271,47 @@ function AdaptiveTaker({ config, onFinish }) {
   );
 }
 
+function Section({ label, data, expanded, onToggle }) {
+  if (!data) return null;
+  const bdPct = data.max_score > 0 ? Math.round((data.score / data.max_score) * 100) : 0;
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-bold text-slate-800">{label}</p>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${bdPct >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+            {data.score}/{data.max_score} ({bdPct}%)
+          </span>
+        </div>
+        <span className="text-slate-400 text-xs">{expanded ? '▲ Hide' : '▼ Show'}</span>
+      </button>
+      {expanded && (
+        <div className="px-5 pb-5 flex flex-col gap-3">
+          {(data.breakdown || []).map((b, idx) => (
+            <div key={idx} className={`rounded-xl border p-4 ${b.is_correct ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'}`}>
+              <div className="flex items-start gap-2 mb-2">
+                <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${b.is_correct ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{b.is_correct ? '✓' : '✗'}</span>
+                <MathContent html={b.stem} className="text-xs text-slate-800 leading-relaxed [&_p]:m-0" />
+              </div>
+              <div className="flex gap-3 text-[10px] text-slate-500 pl-7">
+                <span>Your: <strong>{b.selected || '—'}</strong></span>
+                <span>Correct: <strong className="text-green-700">{b.correct_answer}</strong></span>
+                {b.topic && <span className="ml-auto">{b.topic}</span>}
+              </div>
+              {b.explanation && <p className="text-[11px] text-slate-500 italic mt-2 pl-7 border-t border-slate-100 pt-2">{b.explanation}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdaptiveResults({ config, results, onDone }) {
   const [expandM1, setExpandM1] = useState(false);
   const [expandM2, setExpandM2] = useState(false);
   const pct    = results.total_max > 0 ? Math.round((results.total_score / results.total_max) * 100) : 0;
   const passed = pct >= 60;
-
-  const Section = ({ label, data, expanded, onToggle }) => {
-    if (!data) return null;
-    const bdPct = data.max_score > 0 ? Math.round((data.score / data.max_score) * 100) : 0;
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-bold text-slate-800">{label}</p>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${bdPct >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {data.score}/{data.max_score} ({bdPct}%)
-            </span>
-          </div>
-          <span className="text-slate-400 text-xs">{expanded ? '▲ Hide' : '▼ Show'}</span>
-        </button>
-        {expanded && (
-          <div className="px-5 pb-5 flex flex-col gap-3">
-            {(data.breakdown || []).map((b, idx) => (
-              <div key={idx} className={`rounded-xl border p-4 ${b.is_correct ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'}`}>
-                <div className="flex items-start gap-2 mb-2">
-                  <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${b.is_correct ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{b.is_correct ? '✓' : '✗'}</span>
-                  <MathContent html={b.stem} className="text-xs text-slate-800 leading-relaxed [&_p]:m-0" />
-                </div>
-                <div className="flex gap-3 text-[10px] text-slate-500 pl-7">
-                  <span>Your: <strong>{b.selected || '—'}</strong></span>
-                  <span>Correct: <strong className="text-green-700">{b.correct_answer}</strong></span>
-                  {b.topic && <span className="ml-auto">{b.topic}</span>}
-                </div>
-                {b.explanation && <p className="text-[11px] text-slate-500 italic mt-2 pl-7 border-t border-slate-100 pt-2">{b.explanation}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl mx-auto">
@@ -435,6 +435,7 @@ function PracticeTaker({ config, onFinish }) {
   const [results,   setResults]   = useState(null);
   const [error,     setError]     = useState('');
   const timerRef = useRef(null);
+  const handleSubmitRef = useRef(null);
 
   useEffect(() => {
     satService.startPractice(config._id)
@@ -448,21 +449,25 @@ function PracticeTaker({ config, onFinish }) {
       .catch(e => { setError(e.message); setPhase('error'); });
   }, [config]);
 
-  useEffect(() => {
-    if (phase !== 'taking' || timeLeft === null) return;
-    if (timeLeft <= 0) { handleSubmit(); return; }
-    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-    return () => clearTimeout(timerRef.current);
-  }, [phase, timeLeft]); // eslint-disable-line
-
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     clearTimeout(timerRef.current); setPhase('submitting');
     const payload = questions.map(q => ({ question_id: q._id || q.id, selected: answers[q._id || q.id] || null }));
     try {
       const res = await satService.submitPractice(sessionId, payload);
       setResults(res); setPhase('results');
     } catch (e) { setError(e.message); setPhase('error'); }
-  };
+  }, [questions, sessionId, answers]);
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
+  useEffect(() => {
+    if (phase !== 'taking' || timeLeft === null) return;
+    if (timeLeft <= 0) { handleSubmitRef.current(); return; }
+    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [phase, timeLeft]);
 
   if (phase === 'loading') return <div className="flex items-center justify-center py-24 text-slate-400 text-sm">Starting test…</div>;
   if (phase === 'error')   return <div className="flex flex-col items-center py-24 gap-4"><p className="text-red-600 text-sm">{error}</p><button onClick={onFinish} className="px-4 py-2 rounded-xl bg-slate-100 text-sm font-semibold text-slate-700">Back</button></div>;

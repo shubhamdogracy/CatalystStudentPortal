@@ -145,6 +145,7 @@ function TestTaker({ config, onFinish }) {
   const [results,    setResults]    = useState(null);
   const [error,      setError]      = useState('');
   const timerRef = useRef(null);
+  const handleSubmitRef = useRef(null);
 
   // Start or resume session
   useEffect(() => {
@@ -161,15 +162,7 @@ function TestTaker({ config, onFinish }) {
       .catch(e => { setError(e.message); setPhase('error'); });
   }, [config]);
 
-  // Countdown timer
-  useEffect(() => {
-    if (phase !== 'taking' || timeLeft === null) return;
-    if (timeLeft <= 0) { handleSubmit(); return; }
-    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-    return () => clearTimeout(timerRef.current);
-  }, [phase, timeLeft]);
-
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     clearTimeout(timerRef.current);
     setPhase('submitting');
     const payload = questions.map(q => ({ question_id: q._id || q.id, selected: answers[q._id || q.id] || null }));
@@ -178,7 +171,19 @@ function TestTaker({ config, onFinish }) {
       setResults(res);
       setPhase('results');
     } catch (e) { setError(e.message); setPhase('error'); }
-  };
+  }, [questions, sessionId, answers]);
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (phase !== 'taking' || timeLeft === null) return;
+    if (timeLeft <= 0) { handleSubmitRef.current(); return; }
+    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [phase, timeLeft]);
 
   const answered = Object.keys(answers).length;
 
