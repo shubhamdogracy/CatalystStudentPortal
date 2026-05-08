@@ -14,26 +14,7 @@
 import { useState } from 'react';
 import { Bookmark, ChevronDown, ChevronUp, Calculator as CalcIcon, Maximize2, Minimize2 } from 'lucide-react';
 import MathContent from '../../components/common/MathContent';
-
-// ─── Design tokens ─────────────────────────────────────────────────────────────
-export const C = {
-  accent:       '#80AF81',
-  accentLight:  '#80AF8115',
-  accentBorder: '#80AF8140',
-  text:         '#2A2A2A',
-  textMuted:    '#2A2A2A99',
-  bg1:          '#F2F2F2',
-  bg2:          '#FFFFFF',
-  border:       '#e5e7eb',
-  red:          '#ef4444',
-};
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-export function formatTime(secs) {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+import { C, formatTime } from './testConstants';
 
 // ─── Colorful dashed SAT-style divider ─────────────────────────────────────────
 export function SATDivider() {
@@ -236,6 +217,15 @@ export function TestTopBar({
                 >
                   <span className="text-base">✅</span>
                   <span className="font-semibold">Submit Test</span>
+                </button>
+                <div style={{ borderTop: `1px solid ${C.bg1}` }} />
+                <button
+                  onClick={onExit}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-gray-50"
+                  style={{ color: C.textMuted }}
+                >
+                  <span className="text-base">🚪</span>
+                  <span className="font-semibold">Exit Test</span>
                 </button>
               </div>
             )}

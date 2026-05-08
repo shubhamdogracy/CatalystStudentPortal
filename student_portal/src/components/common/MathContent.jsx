@@ -27,8 +27,6 @@ const renderLatex = (html) => {
   return out;
 };
 
-export { renderLatex };
-
 export default function MathContent({ html, className = '', style }) {
   if (!html) return null;
   return (

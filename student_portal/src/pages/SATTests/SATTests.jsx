@@ -16,8 +16,8 @@ import MathContent from '../../components/common/MathContent';
 import { satService } from '../../services/api';
 import DesmosCalculator    from '../Assignments/DesmosCalculator';
 import MathReferencesPanel from '../Assignments/MathReferencesPanel';
+import { C } from '../Assignments/testConstants';
 import {
-  C,
   SATDivider,
   TestTopBar,
   TestBottomBar,
@@ -84,7 +84,7 @@ function FullScreenError({ error, onBack }) {
 }
 
 // ─── Module 1 → 2 transition screen ───────────────────────────────────────────
-function ModuleTransition({ m1Result, config, onContinue, busy }) {
+function ModuleTransition({ m1Result, onContinue, busy }) {
   const pct    = m1Result?.percentage ?? 0;
   const isHard = m1Result?.tier === 'hard';
   return (
@@ -276,7 +276,7 @@ function PracticeResults({ config, results, onDone }) {
 
 // ─── Adaptive test taker (Mock / Diagnostic) ───────────────────────────────────
 // Full-screen two-module adaptive UI matching Image #1 / #3.
-function AdaptiveTaker({ config, student, onFinish }) {
+function AdaptiveTaker({ config, onFinish }) {
   const subject     = config.subject || 'reading_writing';
   const sectionName = subject === 'math' ? 'Mathematics' : 'Reading and Writing';
 
@@ -331,7 +331,7 @@ function AdaptiveTaker({ config, student, onFinish }) {
         setPhase('module1');
       })
       .catch(e => { setError(e.message); setPhase('error'); });
-  }, [config._id]); // eslint-disable-line
+  }, [config._id]);
 
   // ── Timer countdown ──
   useEffect(() => {
@@ -345,7 +345,7 @@ function AdaptiveTaker({ config, student, onFinish }) {
     if (timeLeft !== 0) return;
     if (phase === 'module1') submitM1();
     else if (phase === 'module2') submitM2();
-  }, [timeLeft]); // eslint-disable-line
+  }, [timeLeft, phase, submitM1, submitM2]);
 
   // ── Submit handlers ──
   const submitM1 = useCallback(async () => {
@@ -395,7 +395,7 @@ function AdaptiveTaker({ config, student, onFinish }) {
       setPhase('results');
     } catch (e) { setError(e.message); setPhase('module2'); }
     finally { submittingRef.current = false; }
-  }, []); // eslint-disable-line
+  }, []);
 
   const handleAnswer = (qid, choice) => setAnswers(p => ({ ...p, [qid]: choice }));
   const handleNext   = () => {
@@ -415,7 +415,6 @@ function AdaptiveTaker({ config, student, onFinish }) {
   if (phase === 'm1_done')    return (
     <ModuleTransition
       m1Result={m1Result}
-      config={config}
       onContinue={loadModule2}
       busy={submittingRef.current}
     />
@@ -571,7 +570,7 @@ function PracticeTaker({ config, onFinish }) {
         setPhase('taking');
       })
       .catch(e => { setError(e.message); setPhase('error'); });
-  }, []); // eslint-disable-line
+  }, [config._id, config.time_limit_minutes]);
 
   // ── Submit ──
   const handleSubmit = useCallback(async () => {
@@ -924,7 +923,6 @@ export default function SATTests({ student, onTestStart, onTestEnd }) {
     return (
       <AdaptiveTaker
         config={activeTest.config}
-        student={student}
         onFinish={handleFinish}
       />
     );
