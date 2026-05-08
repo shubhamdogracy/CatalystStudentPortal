@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChevronLeft, Clock } from 'lucide-react';
+import { ChevronLeft, Clock, Calculator as CalcIcon, Bookmark, ChevronDown } from 'lucide-react';
 import { assignmentService } from '../../services/api';
 import Calculator from './Calculator';
+import DesmosCalculator from './DesmosCalculator';
+import MathReferencesPanel from './MathReferencesPanel';
 import { StudentReportModal } from './StudentReportModal';
 
 const CHOICES = ['A', 'B', 'C', 'D'];
@@ -32,21 +34,23 @@ function SATDivider() {
 // More menu (⋮)
 function MoreMenu({ onNotes, onSubmitModule, onClose }) {
   return (
-      <div className="absolute right-0 top-9 z-[110] bg-white rounded-2xl shadow-2xl border border-gray-100 w-52 overflow-hidden">
+      <div className="absolute right-0 top-11 z-[110] rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #e5e7eb', width: '200px' }}>
         <button
             onClick={() => { onNotes(); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-gray-50"
+            style={{ color: '#2A2A2A' }}
         >
           <span className="text-base">📝</span>
-          <span className="font-semibold">Notes</span>
+          <span className="font-semibold">Add Notes</span>
         </button>
-        <div className="border-t border-gray-100" />
+        <div style={{ borderTop: '1px solid #F2F2F2' }} />
         <button
             onClick={() => { onSubmitModule(); onClose(); }}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-red-50"
+            style={{ color: '#ef4444' }}
         >
           <span className="text-base">✅</span>
-          <span className="font-semibold">Submit Module</span>
+          <span className="font-semibold">Submit Test</span>
         </button>
       </div>
   );
@@ -65,53 +69,72 @@ function NotesModal({ qid, notes, onAdd, onDelete, onClose }) {
 
   return (
       <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF' }}>
+          {/* Header */}
           <div
-              className="flex items-center justify-between px-5 py-4 border-b border-gray-100"
-              style={{ background: 'linear-gradient(135deg, #fef9c3, #fff7ed)' }}
+              className="flex items-center justify-between px-5 py-4 border-b"
+              style={{ borderColor: '#F2F2F2', background: 'linear-gradient(135deg, #f0f7f0, #f9fdf9)' }}
           >
             <div>
-              <h3 className="text-sm font-bold text-gray-800">Notes</h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Ctrl+Enter to add</p>
+              <h3 className="text-sm font-bold" style={{ color: '#2A2A2A' }}>Notes for this question <br>You can revisit this question to check your notes.</br></h3>
+              <p className="text-[11px] mt-0.5" style={{ color: '#2A2A2A99' }}>Ctrl+Enter to save quickly</p>
             </div>
             <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-white/80 text-gray-500 hover:bg-white flex items-center justify-center text-sm font-bold shadow-sm"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold transition-colors hover:bg-gray-100"
+                style={{ color: '#2A2A2A99', backgroundColor: '#F2F2F2' }}
             >
               ✕
             </button>
           </div>
-          <div className="p-5 space-y-2 max-h-56 overflow-y-auto">
+
+          {/* Existing notes list */}
+          <div className="p-5 space-y-2 max-h-56 overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
             {myNotes.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">No notes yet.</p>
+                <p className="text-xs text-center py-4" style={{ color: '#2A2A2A66' }}>
+                  No notes yet. Add your first note below.
+                </p>
             )}
             {myNotes.map((note, i) => (
-                <div key={i} className="flex items-start gap-2 bg-yellow-50 border border-yellow-100 rounded-xl px-3 py-2.5">
-                  <p className="flex-1 text-xs text-gray-700 leading-relaxed">{note}</p>
+                <div
+                    key={i}
+                    className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                    style={{ backgroundColor: '#80AF8115', border: '1px solid #80AF8130' }}
+                >
+                  <p className="flex-1 text-xs leading-relaxed" style={{ color: '#2A2A2A' }}>{note}</p>
                   <button
                       onClick={() => onDelete(qid, i)}
-                      className="text-gray-300 hover:text-red-400 text-sm shrink-0 mt-0.5 transition-colors"
+                      className="text-xs shrink-0 mt-0.5 transition-colors hover:opacity-60"
+                      style={{ color: '#2A2A2A66' }}
                   >
                     ✕
                   </button>
                 </div>
             ))}
           </div>
-          <div className="px-5 pb-5 space-y-2">
-          <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) handleAdd(); }}
-              placeholder="Type a note… (Ctrl+Enter to save)"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 resize-none focus:outline-none focus:border-indigo-300 transition-colors"
-              rows={3}
-          />
+
+          {/* Input area */}
+          <div className="px-5 pb-5 space-y-2" style={{ backgroundColor: '#FFFFFF' }}>
+            <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) handleAdd(); }}
+                placeholder="Write a note for this question…"
+                className="w-full rounded-xl px-3 py-2 text-xs resize-none focus:outline-none transition-colors"
+                style={{
+                  border: '1.5px solid #e5e7eb',
+                  color: '#2A2A2A',
+                  backgroundColor: '#F2F2F2',
+                }}
+                rows={3}
+            />
             <button
                 onClick={handleAdd}
                 disabled={!draft.trim()}
-                className="w-full py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                className="w-full py-2.5 rounded-xl text-xs font-bold transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: '#80AF81', color: '#FFFFFF' }}
             >
-              Add Note
+              Save Note
             </button>
           </div>
         </div>
@@ -143,157 +166,39 @@ function ReferencesModal({ images, onClose }) {
   );
 }
 
-// SAT Math Formula Reference Panel
-function MathReferencesPanel({ onClose }) {
-  return (
-      <div
-          className="fixed right-4 top-[72px] z-[200] w-72 max-h-[calc(100vh-88px)] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
-          style={{ border: '1px solid #374151' }}
-      >
-        {/* Dark header */}
-        <div className="flex items-start justify-between px-4 py-3 shrink-0" style={{ background: '#111827' }}>
-          <div>
-            <h3 className="text-sm font-bold text-white">References</h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">SAT Math Formula Sheet</p>
-          </div>
-          <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-lg bg-white/20 text-white hover:bg-white/30 flex items-center justify-center text-xs font-bold transition-colors mt-0.5"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-
-          {/* Area */}
-          <div>
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">Area</p>
-            <div className="grid grid-cols-3 gap-2">
-              {/* Circle */}
-              <div className="text-center bg-white rounded-xl p-2 border border-gray-100">
-                <svg viewBox="0 0 40 40" className="w-8 h-8 mx-auto mb-1">
-                  <circle cx="20" cy="20" r="14" fill="none" stroke="#374151" strokeWidth="1.5"/>
-                  <line x1="20" y1="20" x2="34" y2="20" stroke="#374151" strokeWidth="1.5"/>
-                  <text x="28" y="18" fontSize="6" fill="#374151" textAnchor="middle">r</text>
-                </svg>
-                <p className="text-[9px] font-bold text-gray-700">A = πr²</p>
-                <p className="text-[9px] text-gray-500">C = 2πr</p>
-              </div>
-              {/* Rectangle */}
-              <div className="text-center bg-white rounded-xl p-2 border border-gray-100">
-                <svg viewBox="0 0 40 40" className="w-8 h-8 mx-auto mb-1">
-                  <rect x="4" y="12" width="32" height="18" fill="none" stroke="#374151" strokeWidth="1.5"/>
-                  <text x="20" y="10" fontSize="6" fill="#374151" textAnchor="middle">ℓ</text>
-                  <text x="37" y="23" fontSize="6" fill="#374151" textAnchor="middle">w</text>
-                </svg>
-                <p className="text-[9px] font-bold text-gray-700">A = ℓw</p>
-              </div>
-              {/* Triangle */}
-              <div className="text-center bg-white rounded-xl p-2 border border-gray-100">
-                <svg viewBox="0 0 40 40" className="w-8 h-8 mx-auto mb-1">
-                  <polygon points="20,5 4,35 36,35" fill="none" stroke="#374151" strokeWidth="1.5"/>
-                  <line x1="20" y1="5" x2="20" y2="35" stroke="#374151" strokeWidth="1" strokeDasharray="2,2"/>
-                  <text x="23" y="22" fontSize="5.5" fill="#374151">h</text>
-                  <text x="20" y="41" fontSize="6" fill="#374151" textAnchor="middle">b</text>
-                </svg>
-                <p className="text-[9px] font-bold text-gray-700">A = ½bh</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Pythagorean Theorem */}
-          <div>
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">Pythagorean Theorem</p>
-            <div className="bg-white rounded-xl p-3 border border-gray-100 flex items-center gap-3">
-              <svg viewBox="0 0 44 44" className="w-11 h-11 shrink-0">
-                <polygon points="6,38 38,38 6,10" fill="none" stroke="#374151" strokeWidth="1.5"/>
-                <rect x="6" y="30" width="8" height="8" fill="none" stroke="#374151" strokeWidth="1"/>
-                <text x="22" y="44" fontSize="6" fill="#374151" textAnchor="middle">a</text>
-                <text x="2" y="25" fontSize="6" fill="#374151" textAnchor="middle">b</text>
-                <text x="25" y="26" fontSize="6" fill="#374151" textAnchor="middle">c</text>
-              </svg>
-              <p className="text-sm font-bold text-gray-800">c² = a² + b²</p>
-            </div>
-          </div>
-
-          {/* Special Right Triangles */}
-          <div>
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">Special Right Triangles</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
-                <p className="text-[10px] font-bold text-gray-700 mb-1">30°-60°-90°</p>
-                <p className="text-[9px] text-gray-600">x · x√3 · 2x</p>
-              </div>
-              <div className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
-                <p className="text-[10px] font-bold text-gray-700 mb-1">45°-45°-90°</p>
-                <p className="text-[9px] text-gray-600">x · x · x√2</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Volume */}
-          <div>
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">Volume</p>
-            <div className="space-y-1.5">
-              {[
-                { label: 'Rectangular Prism', formula: 'V = ℓwh' },
-                { label: 'Cylinder',          formula: 'V = πr²h' },
-                { label: 'Sphere',            formula: 'V = ⁴⁄₃πr³' },
-                { label: 'Cone',              formula: 'V = ⅓πr²h' },
-                { label: 'Pyramid',           formula: 'V = ⅓ℓwh' },
-              ].map(({ label, formula }) => (
-                  <div key={label} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <span className="text-[10px] text-gray-500">{label}</span>
-                    <span className="text-[11px] font-bold text-gray-800">{formula}</span>
-                  </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Key Facts */}
-          <div>
-            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">Key Facts</p>
-            <div className="bg-white rounded-xl p-3 border border-gray-100 space-y-1.5">
-              <p className="text-[10px] text-gray-600">• A circle contains 360°</p>
-              <p className="text-[10px] text-gray-600">• A circle contains 2π radians</p>
-              <p className="text-[10px] text-gray-600">• The angles of a triangle sum to 180°</p>
-            </div>
-          </div>
-        </div>
-      </div>
-  );
-}
-
 // Question picker bottom sheet
 function QuestionPicker({ questions, currentIdx, answers, markedForReview, onSelect, onClose }) {
   return (
-      <div className="fixed inset-0 z-[150] bg-black/50 flex items-end justify-center" onClick={onClose}>
+      <div className="fixed inset-0 z-[150] bg-black/40 flex items-end justify-center pb-6" onClick={onClose}>
         <div
-            className="bg-white rounded-t-3xl w-full max-w-2xl p-5 shadow-2xl"
+            className="rounded-3xl w-full max-w-2xl mx-4 p-5 shadow-2xl"
+            style={{ backgroundColor: '#FFFFFF' }}
             onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-          <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-3">
+          {/* Drag handle */}
+          <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ backgroundColor: '#F2F2F2' }} />
+
+          <p className="text-[11px] font-extrabold uppercase tracking-widest mb-3" style={{ color: '#80AF81' }}>
             Jump to Question
           </p>
-          <div className="grid grid-cols-8 gap-2 mb-4">
+
+          <div className="grid grid-cols-8 gap-2 mb-5">
             {questions.map((q, i) => {
-              const answered = !!answers[q.qid];
-              const marked   = markedForReview.has(q.qid);
+              const answered  = !!answers[q.qid];
+              const marked    = markedForReview.has(q.qid);
               const isCurrent = i === currentIdx;
               return (
                   <button
                       key={q.qid}
                       onClick={() => { onSelect(i); onClose(); }}
-                      className={`aspect-square rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-0.5 transition-all ${
+                      style={
                           isCurrent
-                              ? 'bg-indigo-600 text-white shadow-md'
+                              ? { backgroundColor: '#80AF81', color: '#FFFFFF' }
                               : answered
-                                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                  : 'bg-gray-100 text-gray-500 border border-gray-200'
-                      }`}
+                                  ? { backgroundColor: '#80AF8120', color: '#80AF81', border: '1px solid #80AF8140' }
+                                  : { backgroundColor: '#F2F2F2', color: '#2A2A2A', border: '1px solid #e5e7eb' }
+                      }
+                      className="aspect-square rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-0.5 transition-all hover:opacity-80"
                   >
                     <span>{i + 1}</span>
                     {marked && <span className="text-[8px] leading-none">🔖</span>}
@@ -301,14 +206,24 @@ function QuestionPicker({ questions, currentIdx, answers, markedForReview, onSel
               );
             })}
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-gray-400 font-semibold mb-4">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-indigo-100 border border-indigo-200 inline-block" /> Answered</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" /> Unanswered</span>
-            <span className="flex items-center gap-1">🔖 Marked</span>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-[10px] font-semibold mb-5" style={{ color: '#2A2A2A99' }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#80AF8120', border: '1px solid #80AF8140' }} />
+              Answered
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#F2F2F2', border: '1px solid #e5e7eb' }} />
+              Unanswered
+            </span>
+            <span className="flex items-center gap-1.5">🔖 Marked for Review</span>
           </div>
+
           <button
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-colors"
+              style={{ backgroundColor: '#F2F2F2', color: '#2A2A2A' }}
           >
             Close
           </button>
@@ -664,21 +579,24 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
 
   if (!currentModule || !currentQuestion) return null;
 
-  const hasImages     = (currentQuestion.images || []).length > 0;
-  const hasPassage    = !!currentQuestion.description;
-  const isRWWithPassage = !currentModule.isMath && hasPassage;
-  const qNotes        = notes[currentQuestion.qid] || [];
+  const hasImages  = (currentQuestion.images || []).length > 0;
+  // hasDescription: question has a passage/description to show on the left panel.
+  // When true, the question title goes on the right; when false, the title IS the left panel.
+  const hasDescription = !!currentQuestion.description;
+  const qNotes     = notes[currentQuestion.qid] || [];
 
-  const timerCls = timeLeft <= 120
-      ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
-      : timeLeft <= 300
-          ? 'bg-amber-50 border-amber-200 text-amber-600'
-          : 'bg-white border-gray-200 text-slate-700';
+  // Timer color: red when < 2 min, amber when < 5 min, brand typography otherwise
+  const timerColor = timeLeft <= 120 ? '#ef4444' : timeLeft <= 300 ? '#d97706' : '#2A2A2A';
+  const timerCls   = timeLeft <= 120 ? 'animate-pulse' : '';
 
   return (
       <div className="absolute inset-0 bg-white flex flex-col select-none overflow-hidden z-[60]">
-        {/* Floating calculator */}
-        {showCalc && currentModule.calculatorAllowed && <Calculator onClose={() => setShowCalc(false)} />}
+        {/* Floating calculator — Desmos for math modules, basic otherwise */}
+        {showCalc && currentModule.calculatorAllowed && (
+          currentModule.isMath
+            ? <DesmosCalculator onClose={() => setShowCalc(false)} />
+            : <Calculator onClose={() => setShowCalc(false)} />
+        )}
 
         {/* Modals */}
         {showNotes && (
@@ -713,87 +631,104 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
         )}
 
         {/* ── TOP BAR ── */}
-        <div className="shrink-0 bg-white shadow-sm">
-          <div className="flex items-center justify-between px-4 py-2.5">
-            {/* Assignment title */}
-            <div className="min-w-[120px]">
-              <p className="text-xs font-bold text-gray-800 leading-tight truncate max-w-[160px]">{assignment.title}</p>
-              <p className="text-[10px] text-gray-400">SAT Assessment</p>
+        <div className="shrink-0 bg-white">
+          <div className="flex items-center justify-between px-6 py-3 gap-4">
+
+            {/* Left: Section name + module + Directions button */}
+            <div className="flex flex-col gap-0.5 min-w-[180px]">
+              <p className="text-[15px] font-extrabold text-gray-900 leading-tight">{currentModule.sectionName}</p>
+              <p className="text-[11px] text-gray-500 font-medium">Module {currentModule.moduleNum}</p>
+              <button className="self-start mt-1.5 flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                Directions <ChevronDown size={10} />
+              </button>
             </div>
 
-            {/* Timer (centered) */}
-            <div className="flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-bold text-indigo-500 tracking-wide">
-              {currentModule.sectionName} · Module {currentModule.moduleNum}
-            </span>
+            {/* Center: Large timer + hide/show */}
+            <div className="flex flex-col items-center flex-1">
               {showTimer ? (
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${timerCls}`}>
-                    <Clock size={11} />
+                  <span
+                      className={`text-[30px] font-extrabold tracking-tight leading-none ${timerCls}`}
+                      style={{ color: timerColor }}
+                  >
                     {formatTime(timeLeft)}
-                  </div>
+                  </span>
               ) : (
-                  <span className="text-[11px] text-gray-400 font-medium">Timer hidden</span>
+                  <span className="text-sm font-semibold" style={{ color: '#2A2A2A99' }}>Timer hidden</span>
               )}
               <button
                   onClick={() => setShowTimer((p) => !p)}
-                  className="text-[10px] text-indigo-500 hover:text-indigo-700 font-semibold transition-colors"
+                  className="mt-1.5 px-4 py-0.5 rounded-full border text-[11px] font-semibold transition-colors hover:bg-gray-50"
+                  style={{ borderColor: '#e5e7eb', color: '#2A2A2A' }}
               >
                 {showTimer ? 'Hide' : 'Show'}
               </button>
             </div>
 
-            {/* Right actions */}
-            <div className="flex items-center gap-2 min-w-[120px] justify-end">
-              {/* fx References — always visible for math */}
-              {currentModule.isMath && (
-                  <button
-                      onClick={() => setShowMathRef((p) => !p)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors whitespace-nowrap ${
-                          showMathRef
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'
-                      }`}
-                  >
-                    <span className="font-serif italic font-bold">f</span>
-                    <span className="text-[9px] -ml-0.5 -mt-1">x</span>
-                    <span className="ml-0.5">References</span>
-                  </button>
-              )}
-              {/* Question image references */}
-              {hasImages && (
-                  <button
-                      onClick={() => setShowReferences(true)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-colors whitespace-nowrap"
-                  >
-                    📚 Ref
-                  </button>
-              )}
+            {/* Right: Tool buttons + More */}
+            <div className="flex items-center gap-0.5 min-w-[180px] justify-end">
+
+              {/* Calculator — math modules only */}
               {currentModule.calculatorAllowed && (
-                  <button
-                      onClick={() => setShowCalc((p) => !p)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
-                          showCalc
-                              ? 'bg-emerald-600 text-white border-emerald-600'
-                              : 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-                      }`}
-                  >
-                    🧮
-                  </button>
+                <button
+                  onClick={() => setShowCalc((p) => !p)}
+                  className={`flex flex-col items-center justify-center gap-[3px] px-3 py-2 rounded-xl transition-all ${
+                    showCalc
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <CalcIcon size={17} className="shrink-0" />
+                  <span className="text-[10px] font-semibold leading-none">Calculator</span>
+                </button>
               )}
-              {/* More (⋮) */}
+
+              {/* fx References — math modules only */}
+              {currentModule.isMath && (
+                <button
+                  onClick={() => setShowMathRef((p) => !p)}
+                  className={`flex flex-col items-center justify-center gap-[3px] px-3 py-2 rounded-xl transition-all ${
+                    showMathRef
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <span className="font-bold italic leading-none" style={{ fontFamily: 'Georgia, serif', fontSize: 17 }}>
+                    f<span style={{ fontSize: 11, verticalAlign: 'sub' }}>x</span>
+                  </span>
+                  <span className="text-[10px] font-semibold leading-none">References</span>
+                </button>
+              )}
+
+              {/* Image references */}
+              {hasImages && (
+                <button
+                  onClick={() => setShowReferences(true)}
+                  className="flex flex-col items-center justify-center gap-[3px] px-3 py-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all"
+                >
+                  <span className="text-base leading-none">📚</span>
+                  <span className="text-[10px] font-semibold leading-none">Images</span>
+                </button>
+              )}
+
+              {/* More (⋮) — always visible, top-right */}
               <div className="relative z-[110]">
                 <button
-                    onClick={() => setShowMore((p) => !p)}
-                    className="w-8 h-8 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center text-lg font-bold transition-colors"
+                  onClick={() => setShowMore((p) => !p)}
+                  className="flex flex-col items-center justify-center gap-[2px] px-3 py-2 rounded-xl transition-all"
+                  style={showMore
+                    ? { backgroundColor: '#F2F2F2', color: '#2A2A2A' }
+                    : { color: '#2A2A2A99' }
+                  }
                 >
-                  ⋮
+                  <span className="font-black leading-none" style={{ fontSize: 20, letterSpacing: 1 }}>⋮</span>
+                  <span className="text-[10px] font-semibold leading-none">More</span>
                 </button>
                 {showMore && (
-                    <MoreMenu
-                        onNotes={() => setShowNotes(true)}
-                        onSubmitModule={handleSubmitModule}
-                        onClose={() => setShowMore(false)}
-                    />
+                  <MoreMenu
+                    onNotes={() => setShowNotes(true)}
+                    onSubmitModule={handleSubmitModule}
+                    onClose={() => setShowMore(false)}
+                  />
                 )}
               </div>
             </div>
@@ -801,175 +736,212 @@ export default function SATTestTaker({ assignment, student, batchId, initialResp
           <SATDivider />
         </div>
 
-        {/* ── CONTENT AREA ── */}
-        <div className={`flex-1 overflow-hidden flex ${isRWWithPassage ? 'flex-row' : 'flex-col'}`}>
-          {/* Passage panel — RW only */}
-          {isRWWithPassage && (
-              <div className="w-1/2 h-full overflow-y-auto border-r border-gray-200 p-6 bg-gray-50/40">
+        {/* ── CONTENT AREA — always split left / right ── */}
+        <div className="flex-1 overflow-hidden flex flex-row" style={{ backgroundColor: '#F2F2F2' }}>
+
+          {/* ── LEFT PANEL: description/passage OR question stem ── */}
+          <div className="w-1/2 h-full overflow-y-auto border-r" style={{ backgroundColor: '#FFFFFF', borderColor: '#e5e7eb' }}>
+            <div className="p-8">
+              {hasDescription ? (
+                /* Passage / description HTML */
                 <div
-                    className="text-sm text-gray-700 leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-gray-200 [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-gray-100 [&_th]:font-semibold [&_p]:mb-1"
+                    className="text-sm leading-7 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-gray-200 [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-gray-50 [&_th]:font-semibold [&_p]:mb-2"
+                    style={{ color: '#2A2A2A' }}
                     dangerouslySetInnerHTML={{ __html: currentQuestion.description }}
                 />
-              </div>
-          )}
-
-          {/* Question panel */}
-          <div className={`${isRWWithPassage ? 'w-1/2' : 'w-full max-w-2xl mx-auto'} h-full overflow-y-auto p-6`}>
-            {/* Question stem */}
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div className="flex items-start gap-3 flex-1">
-              <span className="w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                {questionIdx + 1}
-              </span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900 leading-relaxed">
-                    {currentQuestion.title}
-                  </p>
-                  {currentQuestion.topic && (
-                      <span className="inline-flex mt-1.5 text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2.5 py-0.5">
-                    {currentQuestion.topic}
-                  </span>
-                  )}
-                  {/* Description below title (Math or RW without passage split) */}
-                  {!isRWWithPassage && currentQuestion.description && (
-                      <div
-                          className="text-sm text-gray-600 mt-2 leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-gray-200 [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-gray-50 [&_th]:font-semibold [&_p]:mb-1"
-                          dangerouslySetInnerHTML={{ __html: currentQuestion.description }}
-                      />
-                  )}
-                </div>
-              </div>
-
-              {/* Mark for Review */}
-              <button
-                  onClick={() => toggleMark(currentQuestion.qid)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
-                      markedForReview.has(currentQuestion.qid)
-                          ? 'bg-amber-100 border-amber-300 text-amber-700'
-                          : 'border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600'
-                  }`}
-              >
-                🔖 {markedForReview.has(currentQuestion.qid) ? 'Marked' : 'Mark'}
-              </button>
+              ) : (
+                /* No description — question title/stem goes on the left */
+                <p className="text-[15px] font-medium leading-relaxed" style={{ color: '#2A2A2A' }}>
+                  {currentQuestion.title}
+                </p>
+              )}
             </div>
+          </div>
 
-            {/* Choices */}
-            <div className="flex flex-col gap-2.5">
-              {CHOICES.map((choice) => {
-                const label      = currentQuestion.choices?.[choice];
-                if (!label) return null;
-                const isSelected = answers[currentQuestion.qid] === choice;
-                const isStruck   = !!strikedChoices[currentQuestion.qid]?.[choice];
+          {/* ── RIGHT PANEL: header + question (if passage) + choices ── */}
+          <div className="w-1/2 h-full overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
+            <div className="p-6 pt-5">
 
-                return (
-                    <div key={choice} className="flex items-center gap-2">
-                      <button
-                          onClick={() => !isStruck && handleAnswer(currentQuestion.qid, choice)}
-                          className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border-[1.5px] text-left transition-all ${
-                              isStruck
-                                  ? 'opacity-40 border-gray-100 bg-gray-50 cursor-default'
-                                  : isSelected
-                                      ? 'border-indigo-500 bg-indigo-50'
-                                      : 'border-gray-200 bg-white hover:border-gray-300'
-                          }`}
-                      >
-                    <span
-                        className={`w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
-                            isSelected && !isStruck
-                                ? 'bg-indigo-500 border-indigo-500 text-white'
-                                : 'border-gray-300 text-gray-500'
-                        }`}
-                    >
-                      {choice}
-                    </span>
-                        <span
-                            className={`text-sm flex-1 ${
-                                isStruck
-                                    ? 'line-through text-gray-400'
-                                    : isSelected
-                                        ? 'font-semibold text-indigo-700'
-                                        : 'text-gray-700'
-                            }`}
-                        >
-                      {label}
-                    </span>
-                      </button>
+              {/* Question header row */}
+              <div className="flex items-center gap-2.5 mb-4 py-2.5 px-3 rounded-xl" style={{ backgroundColor: '#F2F2F2' }}>
+                <span
+                    className="w-8 h-8 text-sm font-extrabold rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+                >
+                  {questionIdx + 1}
+                </span>
 
-                      {/* Strikethrough toggle (S / ↩) */}
-                      <button
-                          onClick={() => toggleStrike(currentQuestion.qid, choice)}
-                          title={isStruck ? 'Restore choice' : 'Eliminate choice'}
-                          className={`w-7 h-7 rounded-lg border text-xs font-bold flex items-center justify-center shrink-0 transition-colors ${
-                              isStruck
-                                  ? 'bg-gray-700 border-gray-700 text-white'
-                                  : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'
-                          }`}
-                      >
-                        {isStruck ? '↩' : 'S'}
-                      </button>
-                    </div>
-                );
-              })}
-            </div>
+                <button
+                    onClick={() => toggleMark(currentQuestion.qid)}
+                    className="flex items-center gap-1.5 text-[12px] font-semibold transition-colors"
+                    style={{ color: markedForReview.has(currentQuestion.qid) ? '#80AF81' : '#2A2A2A99' }}
+                >
+                  <Bookmark
+                      size={13}
+                      fill={markedForReview.has(currentQuestion.qid) ? '#80AF81' : 'none'}
+                      stroke={markedForReview.has(currentQuestion.qid) ? '#80AF81' : 'currentColor'}
+                      strokeWidth={2}
+                  />
+                  Mark for Review
+                </button>
 
-            {/* Notes indicator */}
-            {qNotes.length > 0 && (
+                <div className="flex-1" />
+
+                <button className="text-[11px] font-semibold transition-colors hover:opacity-70" style={{ color: '#ef4444' }}>
+                  Report Issue
+                </button>
+
                 <button
                     onClick={() => setShowNotes(true)}
-                    className="mt-4 flex items-center gap-1.5 text-xs text-amber-600 font-semibold hover:text-amber-700 transition-colors"
+                    className="px-2.5 py-1 rounded border text-[11px] font-bold tracking-wide transition-colors"
+                    style={
+                        qNotes.length > 0
+                            ? { borderColor: '#80AF81', backgroundColor: '#80AF8115', color: '#80AF81' }
+                            : { borderColor: '#d1d5db', color: '#2A2A2A99', backgroundColor: '#FFFFFF' }
+                    }
                 >
-                  📝 {qNotes.length} note{qNotes.length > 1 ? 's' : ''}
+                  {qNotes.length > 0 ? `📝 ${qNotes.length}` : 'ABC'}
                 </button>
-            )}
+              </div>
+
+              {/* Topic tag */}
+              {currentQuestion.topic && (
+                  <span
+                      className="inline-flex mb-3 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+                      style={{ color: '#80AF81', backgroundColor: '#80AF8115', border: '1px solid #80AF8140' }}
+                  >
+                    {currentQuestion.topic}
+                  </span>
+              )}
+
+              {/* Question title — only shown on right when description is on the left */}
+              {hasDescription && (
+                  <p className="text-[14px] font-medium leading-relaxed mb-5" style={{ color: '#2A2A2A' }}>
+                    {currentQuestion.title}
+                  </p>
+              )}
+
+              {/* Answer choices */}
+              <div className="flex flex-col gap-3">
+                {CHOICES.map((choice) => {
+                  const label      = currentQuestion.choices?.[choice];
+                  if (!label) return null;
+                  const isSelected = answers[currentQuestion.qid] === choice;
+                  const isStruck   = !!strikedChoices[currentQuestion.qid]?.[choice];
+
+                  return (
+                      <div key={choice} className="flex items-center gap-2 group">
+                        <button
+                            onClick={() => !isStruck && handleAnswer(currentQuestion.qid, choice)}
+                            className="flex-1 flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-all"
+                            style={
+                                isStruck
+                                    ? { opacity: 0.4, borderColor: '#F2F2F2', backgroundColor: '#F2F2F2', cursor: 'default' }
+                                    : isSelected
+                                        ? { borderColor: '#80AF81', backgroundColor: '#80AF8110' }
+                                        : { borderColor: '#e5e7eb', backgroundColor: '#FFFFFF' }
+                            }
+                        >
+                          <span
+                              className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 transition-all"
+                              style={
+                                  isSelected && !isStruck
+                                      ? { backgroundColor: '#80AF81', borderColor: '#80AF81', color: '#FFFFFF' }
+                                      : { borderColor: '#d1d5db', color: '#2A2A2A99', backgroundColor: '#FFFFFF' }
+                              }
+                          >
+                            {choice}
+                          </span>
+                          <span
+                              className="text-sm flex-1 leading-relaxed"
+                              style={
+                                  isStruck
+                                      ? { textDecoration: 'line-through', color: '#9ca3af' }
+                                      : isSelected
+                                          ? { fontWeight: 600, color: '#2A2A2A' }
+                                          : { color: '#2A2A2A' }
+                              }
+                          >
+                            {label}
+                          </span>
+                        </button>
+
+                        {/* Strikethrough — reveal on hover, always visible when struck */}
+                        <button
+                            onClick={() => toggleStrike(currentQuestion.qid, choice)}
+                            title={isStruck ? 'Restore choice' : 'Eliminate choice'}
+                            className="w-7 h-7 rounded-lg border text-xs font-bold flex items-center justify-center shrink-0 transition-all opacity-0 group-hover:opacity-100"
+                            style={
+                                isStruck
+                                    ? { backgroundColor: '#2A2A2A', borderColor: '#2A2A2A', color: '#FFFFFF', opacity: 1 }
+                                    : { borderColor: '#e5e7eb', color: '#9ca3af' }
+                            }
+                        >
+                          {isStruck ? '↩' : 'S'}
+                        </button>
+                      </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ── BOTTOM BAR ── */}
-        <div className="shrink-0 bg-white shadow-sm">
+        <div className="shrink-0 bg-white">
           <SATDivider />
-          <div className="flex items-center justify-between px-4 py-3">
-            {/* Back */}
-            <button
-                onClick={() => { if (questionIdx > 0) setQuestionIdx((i) => i - 1); }}
-                disabled={questionIdx === 0}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              ← Back
-            </button>
+          <div className="flex items-center px-4 py-3 gap-2">
 
-            {/* Question picker trigger */}
+            {/* Left: Back button */}
+            <div className="flex-1 flex justify-start">
+              <button
+                  onClick={() => { if (questionIdx > 0) setQuestionIdx((i) => i - 1); }}
+                  disabled={questionIdx === 0}
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                  style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+              >
+                Back
+              </button>
+            </div>
+
+            {/* Center: Question picker — accent green */}
             <button
                 onClick={() => setShowPicker(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#80AF81', color: '#FFFFFF' }}
             >
-              Question {questionIdx + 1} of {currentModule.questions.length} ▼
+              Question {questionIdx + 1} of {currentModule.questions.length}
+              <ChevronDown size={14} />
             </button>
 
-            {/* Next / Next Module / Submit Test */}
-            {!isLastQuestion ? (
-                <button
-                    onClick={() => setQuestionIdx((i) => i + 1)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}
-                >
-                  Next →
-                </button>
-            ) : isLastModule ? (
-                <button
-                    onClick={handleSubmitModule}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-                >
-                  Submit Test ✓
-                </button>
-            ) : (
-                <button
-                    onClick={handleSubmitModule}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}
-                >
-                  Next Module →
-                </button>
-            )}
+            {/* Right: Next / Submit */}
+            <div className="flex-1 flex justify-end">
+              {!isLastQuestion ? (
+                  <button
+                      onClick={() => setQuestionIdx((i) => i + 1)}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors"
+                      style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+                  >
+                    Next
+                  </button>
+              ) : isLastModule ? (
+                  <button
+                      onClick={handleSubmitModule}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: '#80AF81', color: '#FFFFFF' }}
+                  >
+                    Submit Test
+                  </button>
+              ) : (
+                  <button
+                      onClick={handleSubmitModule}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors"
+                      style={{ backgroundColor: '#2A2A2A', color: '#FFFFFF' }}
+                  >
+                    Next Module
+                  </button>
+              )}
+            </div>
           </div>
         </div>
 
