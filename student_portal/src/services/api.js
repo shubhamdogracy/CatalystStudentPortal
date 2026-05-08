@@ -49,12 +49,20 @@ export const assignmentService = {
 };
 
 export const satService = {
+  listExamConfigs:    ()               => req('/sat/test/configs'),
+  startSessionDirect: (examConfigId)   => req('/sat/test/start', { method: 'POST', body: JSON.stringify({ exam_config_id: examConfigId }) }),
   getMyAssignments: (studentId)            => req(`/sat/test/assignments?studentId=${studentId}`),
   startSession:     (assignmentId)         => req('/sat/test/start', { method: 'POST', body: JSON.stringify({ assignment_id: assignmentId }) }),
   submitModule1:    (sessionId, answers)   => req(`/sat/test/${sessionId}/module/1/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
   getModule2:       (sessionId)            => req(`/sat/test/${sessionId}/module/2`),
   submitModule2:    (sessionId, answers)   => req(`/sat/test/${sessionId}/module/2/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
   getResults:       (sessionId)            => req(`/sat/test/${sessionId}/results`),
+  // Practice tests
+  listPractice:       ()                   => req('/sat/test/practice'),
+  startPractice:      (configId, assignmentId) => req('/sat/test/practice/start', { method: 'POST', body: JSON.stringify({ config_id: configId, assignment_id: assignmentId }) }),
+  submitPractice:     (sessionId, answers) => req(`/sat/test/practice/${sessionId}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
+  getPracticeResults: (sessionId)          => req(`/sat/test/practice/${sessionId}/results`),
+  getPracticeHistory: ()                   => req('/sat/test/practice/history'),
 };
 
 export const chatService = {
