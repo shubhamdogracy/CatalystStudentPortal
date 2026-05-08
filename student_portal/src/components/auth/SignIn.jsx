@@ -200,7 +200,7 @@ function GuestSignupForm({ onLogin }) {
       </button>
 
       <p className="text-center text-[11px] text-slate-400 leading-relaxed">
-        Free guest access includes 1 diagnostic test + 2 practice tests.
+        Free guest access includes 1 diagnostic test to see where you stand.
         Our team will reach out to help you unlock the full platform.
       </p>
     </form>

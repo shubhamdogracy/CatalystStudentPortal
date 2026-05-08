@@ -16,7 +16,7 @@ function formatTime(secs) {
 // MOCK / DIAGNOSTIC
 // ─────────────────────────────────────────────────────────────
 
-function AdaptiveConfigList({ onStart, defaultFilter = 'all' }) {
+function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false }) {
   const [configs,  setConfigs]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
@@ -33,8 +33,17 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all' }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = filter === 'all' ? configs
-    : configs.filter(c => c.type === filter || c.subject === filter);
+  // Guest users see only the first diagnostic test; paid users see all.
+  const applyGuestLimit = (list) => {
+    if (!isGuest) return list;
+    const diagnostics = list.filter(c => c.type === 'diagnostic');
+    const others      = list.filter(c => c.type !== 'diagnostic');
+    return [...others, ...diagnostics.slice(0, 1)];
+  };
+
+  const base     = applyGuestLimit(configs);
+  const filtered = filter === 'all' ? base
+    : base.filter(c => c.type === filter || c.subject === filter);
 
   if (loading) return (
     <div className="flex items-center justify-center py-24 text-slate-400 text-sm">Loading tests…</div>
@@ -98,6 +107,15 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all' }) {
               </button>
             </div>
           ))}
+          {isGuest && filter === 'diagnostic' && configs.filter(c => c.type === 'diagnostic').length > 1 && (
+            <div className="sm:col-span-2 flex items-center gap-4 px-5 py-4 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50">
+              <span className="text-2xl shrink-0">🔒</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-indigo-800">More diagnostic tests available</p>
+                <p className="text-xs text-indigo-600 mt-0.5">Unlock all diagnostic tests by upgrading to a full account. Speak to our team to get started.</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -582,6 +600,7 @@ function PracticeResults({ config, results, onDone }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function SATTests({ student }) {
+  const isGuest  = student?.role === 'guest' || student?.accountType === 'guest';
   const [tab,    setTab]    = useState('mock');
   // activeTest: { type: 'adaptive'|'practice', config }
   const [activeTest, setActiveTest] = useState(null);
@@ -633,6 +652,7 @@ export default function SATTests({ student }) {
         <AdaptiveConfigList
           key={tab}
           defaultFilter={tab}
+          isGuest={isGuest}
           onStart={cfg => setActiveTest({ type: 'adaptive', config: cfg })}
         />
       )}
