@@ -121,10 +121,16 @@ function TestList({ onStart }) {
                   </div>
                 </div>
 
-                <button onClick={() => onStart(cfg)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                  {hasAttempt ? 'Practice Again →' : 'Start Practice →'}
+                {/*<button onClick={() => onStart(cfg)}*/}
+                {/*  className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"*/}
+                {/*  style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>*/}
+                {/*  {hasAttempt ? 'Practice Again →' : 'Start Practice →'}*/}
+                {/*</button>*/}
+
+                <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
+                        className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
+                        style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                  Start Test →
                 </button>
               </div>
             );

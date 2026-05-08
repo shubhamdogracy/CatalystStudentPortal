@@ -55,6 +55,7 @@ export const satService = {
   submitPractice:     (sessionId, answers) => req(`/sat/test/practice/${sessionId}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
   getPracticeResults: (sessionId)          => req(`/sat/test/practice/${sessionId}/results`),
   getPracticeHistory: ()                   => req('/sat/test/practice/history'),
+  getHistory:         ()                   => req('/sat/test/history'),
 };
 
 export const chatService = {
