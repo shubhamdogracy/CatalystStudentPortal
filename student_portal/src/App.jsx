@@ -10,6 +10,7 @@ import Assignments   from './pages/Assignments/Assignments';
 import Communication from './pages/Communication/Communication';
 import Profile       from './pages/Profile/Profile';
 import PracticeTime  from './pages/PracticeTime/PracticeTime';
+import SATTests      from './pages/SATTests/SATTests';
 
 export default function App() {
   const [student, setStudent]                 = useState(null);
@@ -66,9 +67,10 @@ export default function App() {
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
   // Redirect guests away from paid-only pages
-  const safePage = isGuest && !['dashboard', 'assignments', 'profile'].includes(page)
+  const safePage = isGuest && !['dashboard', 'assignments', 'profile', 'practiceTime'].includes(page)
     ? 'dashboard'
     : page;
+  // satTests is paid-only (not in the guest allow-list above, so guests get redirected to dashboard)
 
   const renderPage = () => {
     switch (safePage) {
@@ -78,6 +80,7 @@ export default function App() {
       case 'assignments':   return <Assignments student={student} />;
       case 'communication': return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
       case 'practiceTime':  return <PracticeTime />;
+      case 'satTests':      return <SATTests student={student} />;
       case 'profile':       return <Profile student={student} onUpdateStudent={(updated) => setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))} />;
       default:              return <Dashboard onNavigate={setPage} />;
     }

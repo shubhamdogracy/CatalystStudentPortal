@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  GraduationCap,
 } from 'lucide-react';
 import BAvatar from 'boring-avatars';
 import catalystLogo from '../../assets/catalyst-logo.png';
@@ -29,7 +30,8 @@ const NAV_GROUPS = [
       { id: 'sessions',      label: 'My Sessions',   icon: Calendar,       guestLocked: true },
       { id: 'slots',         label: 'Book a Slot',   icon: Clock,          guestLocked: true },
       { id: 'communication', label: 'Communication', icon: MessageSquare,  guestLocked: true, badgeKey: 'chat' },
-      { id: 'practiceTime',  label: 'Practice Time', icon: Dumbbell,       guestLocked: true },
+      { id: 'practiceTime',  label: 'Practice Time', icon: Dumbbell,        guestLocked: true },
+      { id: 'satTests',      label: 'SAT Tests',     icon: GraduationCap,   guestLocked: true },
     ],
   },
   {

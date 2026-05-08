@@ -5,6 +5,7 @@ import StatCard from '../../components/common/StatCard';
 import EmptyState from '../../components/common/EmptyState';
 import SATTestTaker from './SATTestTaker';
 import AdaptiveSATTestTaker from './AdaptiveSATTestTaker';
+import PracticeAssignmentTaker from './PracticeAssignmentTaker';
 
 // ── Old batch-assignment card ────────────────────────────────
 function statusConfig(response, dueDate) {
@@ -210,14 +211,65 @@ function AdaptiveSATCard({ assignment, onStart }) {
   );
 }
 
+// ── Practice SAT assignment card ──────────────────────────────
+function PracticeAssignmentCard({ assignment, onStart }) {
+  const cfg         = SAT_STATUS[assignment.status] || SAT_STATUS.pending;
+  const practiceCfg = assignment.practice_config_id;
+  const testName    = practiceCfg?.name || 'Practice Test';
+  const due         = assignment.due_date ? new Date(assignment.due_date) : null;
+
+  const subjectCls  = practiceCfg?.subject === 'math'
+    ? 'bg-blue-50 text-blue-700'
+    : 'bg-purple-50 text-purple-700';
+  const subjectLabel = practiceCfg?.subject === 'math' ? 'Math' : 'R&W';
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-[12px] overflow-hidden hover:border-teal-300 hover:shadow-[0_4px_12px_rgba(20,184,166,0.08)] transition-all">
+      <div className="h-1 bg-gradient-to-r from-teal-500 to-emerald-500" />
+      <div className="px-[22px] py-5">
+        <div className="flex items-start justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <BookOpen size={16} className="text-teal-500 shrink-0" />
+            <span className="text-base font-bold text-slate-900">{testName}</span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${subjectCls}`}>{subjectLabel}</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-200">Practice</span>
+          </div>
+          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${cfg.cls}`}>{cfg.label}</span>
+        </div>
+
+        <div className="flex items-center gap-5 text-xs text-slate-500 mb-4 flex-wrap">
+          {due && (
+            <span className="flex items-center gap-[5px]">
+              <Calendar size={13} />
+              Due: <strong>{due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+            </span>
+          )}
+          {practiceCfg?.topic  && <span className="flex items-center gap-[5px]">📚 {practiceCfg.topic}</span>}
+          {practiceCfg?.domain && <span className="flex items-center gap-[5px]">🎯 {practiceCfg.domain}</span>}
+          {practiceCfg?.total_questions && (
+            <span className="flex items-center gap-[5px]"><FileText size={13} /> {practiceCfg.total_questions} questions</span>
+          )}
+        </div>
+
+        <div className="flex gap-2.5 pt-3 border-t border-slate-100">
+          <button onClick={() => onStart(assignment)} className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-colors ${cfg.btnCls}`}>
+            {cfg.btn}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────
 export default function Assignments({ student }) {
-  const [assignments,    setAssignments]    = useState([]);
-  const [satAssignments, setSatAssignments] = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [error,          setError]          = useState('');
-  const [takingTest,     setTakingTest]     = useState(null);    // old batch test
-  const [takingSatTest,  setTakingSatTest]  = useState(null);    // new adaptive SAT
+  const [assignments,        setAssignments]        = useState([]);
+  const [satAssignments,     setSatAssignments]     = useState([]);
+  const [loading,            setLoading]            = useState(true);
+  const [error,              setError]              = useState('');
+  const [takingTest,         setTakingTest]         = useState(null);    // old batch test
+  const [takingSatTest,      setTakingSatTest]      = useState(null);    // adaptive SAT
+  const [takingPracticeTest, setTakingPracticeTest] = useState(null);    // practice SAT assignment
 
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
@@ -307,6 +359,7 @@ export default function Assignments({ student }) {
   const handleBack = () => {
     setTakingTest(null);
     setTakingSatTest(null);
+    setTakingPracticeTest(null);
     if (isGuest) loadGuestAssignments();
     else loadStudentAssignments();
   };
@@ -335,6 +388,16 @@ export default function Assignments({ student }) {
     );
   }
 
+  // Practice SAT assignment taker
+  if (takingPracticeTest) {
+    return (
+      <PracticeAssignmentTaker
+        assignment={takingPracticeTest}
+        onBack={handleBack}
+      />
+    );
+  }
+
   const completed = assignments.filter((a) => a._response?.status === 'submitted').length;
   const overdue   = assignments.filter(
     (a) => a.dueDate && new Date(a.dueDate) < new Date() && a._response?.status !== 'submitted',
@@ -348,6 +411,8 @@ export default function Assignments({ student }) {
     );
   }
 
+  const adaptiveSatAssignments  = satAssignments.filter(a => a.test_type !== 'practice');
+  const practiceSatAssignments  = satAssignments.filter(a => a.test_type === 'practice');
   const totalCount = assignments.length + satAssignments.length;
 
   return (
@@ -365,18 +430,36 @@ export default function Assignments({ student }) {
         </div>
       )}
 
-      {/* Adaptive SAT Tests (from question bank) */}
-      {satAssignments.length > 0 && (
+      {/* Adaptive SAT Tests (mock / diagnostic / full-length) */}
+      {adaptiveSatAssignments.length > 0 && (
         <div className="card mb-6">
           <div className="card-header">
             <span className="card-title"><Zap size={18} color="#7c3aed" /> Adaptive SAT Tests</span>
           </div>
           <div className="flex flex-col gap-4">
-            {satAssignments.map((a) => (
+            {adaptiveSatAssignments.map((a) => (
               <AdaptiveSATCard
                 key={a._id}
                 assignment={a}
                 onStart={(sa) => setTakingSatTest(sa)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Practice SAT Tests (assigned by mentor) */}
+      {practiceSatAssignments.length > 0 && (
+        <div className="card mb-6">
+          <div className="card-header">
+            <span className="card-title"><BookOpen size={18} color="#0d9488" /> Practice Tests (Assigned)</span>
+          </div>
+          <div className="flex flex-col gap-4">
+            {practiceSatAssignments.map((a) => (
+              <PracticeAssignmentCard
+                key={a._id}
+                assignment={a}
+                onStart={(sa) => setTakingPracticeTest(sa)}
               />
             ))}
           </div>

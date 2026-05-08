@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { satService } from '../../services/api';
 import { StudentReportModal } from './StudentReportModal';
+import MathContent from '../../components/common/MathContent';
+
+const stripHtml = (html = '') => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
 function formatTime(secs) {
   const m = Math.floor(secs / 60);
@@ -30,22 +33,27 @@ function buildReportData({ subject, testName, studentName, m1Data, m2Data }) {
         .map((b) => [b.question_id.toString(), b.selected]),
     );
 
+  const toChoices = (q) => ({
+    A: q.option_a || q.choices?.A || '',
+    B: q.option_b || q.choices?.B || '',
+    C: q.option_c || q.choices?.C || '',
+    D: q.option_d || q.choices?.D || '',
+  });
+
   const buildQuestions = (questions, breakdown) => {
     if (!questions || questions.length === 0) {
-      // getResults path: breakdown carries full question data including choices
       return (breakdown || []).map((b) => ({
         qid:           b.question_id?.toString(),
         id:            b.question_id?.toString(),
-        title:         b.title,
-        description:   b.description,
-        choices:       b.choices,
+        title:         stripHtml(b.stem || b.title || ''),
+        description:   '',
+        choices:       toChoices(b),
         correctAnswer: b.correct_answer,
         topic:         b.topic,
         score:         b.points || 1,
         explanation:   b.explanation,
       }));
     }
-    // In-memory path: questions have choices; correctAnswer comes from breakdown
     const bdByQId = Object.fromEntries(
       (breakdown || [])
         .filter((b) => b.question_id)
@@ -57,9 +65,9 @@ function buildReportData({ subject, testName, studentName, m1Data, m2Data }) {
       return {
         qid:           qId,
         id:            qId,
-        title:         q.title,
-        description:   q.description,
-        choices:       q.choices,
+        title:         stripHtml(q.stem || q.title || ''),
+        description:   '',
+        choices:       toChoices(q),
         correctAnswer: bd.correct_answer,
         topic:         q.topic,
         score:         q.points || 1,
@@ -134,42 +142,46 @@ function QuestionView({ question, answers, onAnswer, index, total }) {
         )}
       </div>
 
-      <p className="text-[15px] text-gray-900 font-medium leading-relaxed">{question.title}</p>
+      <MathContent html={question.stem} className="text-[15px] text-gray-900 font-medium leading-relaxed" />
 
-      {question.description && (
-        <div
-          className="text-sm text-gray-600 leading-relaxed border-l-2 border-indigo-200 pl-4 bg-indigo-50/40 rounded-r-xl py-3 pr-4"
-          dangerouslySetInnerHTML={{ __html: question.description }}
-        />
+      {question.format === 'grid_in' ? (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-gray-500">Your Answer</label>
+          <input
+            type="text"
+            value={selected || ''}
+            onChange={e => onAnswer(question._id, e.target.value)}
+            placeholder="Type your answer…"
+            className="w-40 h-11 px-4 rounded-xl border-2 border-gray-200 text-sm font-mono focus:outline-none focus:border-indigo-400"
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {['A', 'B', 'C', 'D'].map((opt) => {
+            const label = question['option_' + opt.toLowerCase()];
+            if (!label) return null;
+            const isSelected = selected === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => onAnswer(question._id, opt)}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                  isSelected
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-gray-50'
+                }`}
+              >
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                  isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {opt}
+                </span>
+                <MathContent html={label} className={`text-sm flex-1 [&_p]:m-0 ${isSelected ? 'text-indigo-900 font-medium' : 'text-gray-700'}`} />
+              </button>
+            );
+          })}
+        </div>
       )}
-
-      <div className="flex flex-col gap-2.5">
-        {['A', 'B', 'C', 'D'].map((opt) => {
-          const label = question.choices?.[opt];
-          if (!label) return null;
-          const isSelected = selected === opt;
-          return (
-            <button
-              key={opt}
-              onClick={() => onAnswer(question._id, opt)}
-              className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                isSelected
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-gray-50'
-              }`}
-            >
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {opt}
-              </span>
-              <span className={`text-sm flex-1 ${isSelected ? 'text-indigo-900 font-medium' : 'text-gray-700'}`}>
-                {label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }

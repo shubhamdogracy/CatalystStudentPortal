@@ -46,3 +46,10 @@
 ::-webkit-scrollbar        { width: 5px; }
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 10px; }
+
+/* ── SAT question content (HTML + KaTeX) ─────────────────────────── */
+.sat-content p          { margin: 0 0 0.5em; }
+.sat-content p:last-child { margin-bottom: 0; }
+.sat-content svg        { max-width: 100%; height: auto; }
+.sat-content .sr-only   { display: none !important; }
+.sat-content .katex     { font-size: 1em; }
