@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
 
@@ -37,8 +36,7 @@ function GuestBanner() {
   );
 }
 
-export default function Layout({ page, onNavigate, onLogout, student, chatUnreadCount, isGuest, children }) {
-  const [collapsed, setCollapsed] = useState(false);
+export default function Layout({ page, onNavigate, onLogout, student, chatUnreadCount, isGuest, collapsed, onToggleCollapsed, children }) {
   const { title, subtitle } = PAGE_META[page] ?? PAGE_META.dashboard;
 
   return (
@@ -48,7 +46,7 @@ export default function Layout({ page, onNavigate, onLogout, student, chatUnread
         onNavigate={onNavigate}
         onLogout={onLogout}
         collapsed={collapsed}
-        onToggle={() => setCollapsed(c => !c)}
+        onToggle={onToggleCollapsed}
         student={student}
         chatUnreadCount={chatUnreadCount}
         isGuest={isGuest}

@@ -17,6 +17,7 @@ export default function App() {
   const [loading, setLoading]                 = useState(true);
   const [page, setPage]                       = useState('dashboard');
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // On mount: validate cookie with server — restores session after refresh
   useEffect(() => {
@@ -80,14 +81,20 @@ export default function App() {
       case 'assignments':   return <Assignments student={student} />;
       case 'communication': return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
       case 'practiceTime':  return <PracticeTime />;
-      case 'satTests':      return <SATTests student={student} />;
+      case 'satTests':      return (
+        <SATTests
+          student={student}
+          onTestStart={() => setSidebarCollapsed(true)}
+          onTestEnd={() => setSidebarCollapsed(false)}
+        />
+      );
       case 'profile':       return <Profile student={student} onUpdateStudent={(updated) => setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))} />;
       default:              return <Dashboard onNavigate={setPage} />;
     }
   };
 
   return (
-    <Layout page={safePage} onNavigate={setPage} onLogout={handleLogout} student={student} chatUnreadCount={chatUnreadCount} isGuest={isGuest}>
+    <Layout page={safePage} onNavigate={setPage} onLogout={handleLogout} student={student} chatUnreadCount={chatUnreadCount} isGuest={isGuest} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed(c => !c)}>
       {renderPage()}
     </Layout>
   );

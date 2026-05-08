@@ -27,11 +27,14 @@ const renderLatex = (html) => {
   return out;
 };
 
-export default function MathContent({ html, className = '' }) {
+export { renderLatex };
+
+export default function MathContent({ html, className = '', style }) {
   if (!html) return null;
   return (
     <div
       className={`sat-content ${className}`}
+      style={style}
       dangerouslySetInnerHTML={{ __html: renderLatex(html) }}
     />
   );
