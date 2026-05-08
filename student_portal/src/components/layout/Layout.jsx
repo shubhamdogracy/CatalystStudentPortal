@@ -26,7 +26,7 @@ function GuestBanner() {
       <div className="flex items-center gap-2.5 text-amber-800">
         <Sparkles size={15} className="text-amber-500 shrink-0" />
         <span className="text-[13px] font-semibold">
-          Guest Access — You have 1 diagnostic test + 2 practice tests available.
+          Guest Access — You have 1 diagnostic test available.
           Unlock the full platform after your trial.
         </span>
       </div>
