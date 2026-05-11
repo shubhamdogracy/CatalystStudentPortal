@@ -244,26 +244,34 @@ function PracticeResults({ config, results, onDone }) {
               <MathContent html={b.stem} className="text-sm leading-relaxed [&_p]:m-0" style={{ color: C.text }} />
             </div>
             <div className="flex flex-col gap-1.5 pl-9">
-              {['A', 'B', 'C', 'D'].map(opt => {
-                const text = b['option_' + opt.toLowerCase()]; if (!text) return null;
-                const isSel     = b.selected === opt;
-                const isCorrect = b.correct_answer === opt;
-                return (
-                  <div key={opt}
-                    className={`flex items-start gap-2 px-3 py-2 rounded-xl text-[12px] ${isCorrect ? 'bg-green-50 text-green-800 font-semibold' : isSel ? 'bg-red-50 text-red-700' : ''}`}
-                    style={!isCorrect && !isSel ? { color: C.textMuted } : {}}>
-                    <span className="font-bold shrink-0">{opt}.</span>
-                    <MathContent html={text} className="[&_p]:m-0" />
-                    {isCorrect && <span className="ml-auto shrink-0 text-green-600">✓ Correct</span>}
-                    {isSel && !isCorrect && <span className="ml-auto shrink-0 text-red-500">Your answer</span>}
-                  </div>
-                );
-              })}
+              {['A', 'B', 'C', 'D'].some(o => b['option_' + o.toLowerCase()]) ? (
+                ['A', 'B', 'C', 'D'].map(opt => {
+                  const text = b['option_' + opt.toLowerCase()]; if (!text) return null;
+                  const isSel     = b.selected === opt;
+                  const isCorrect = b.correct_answer === opt;
+                  return (
+                    <div key={opt}
+                      className={`flex items-start gap-2 px-3 py-2 rounded-xl text-[12px] ${isCorrect ? 'bg-green-50 text-green-800 font-semibold' : isSel ? 'bg-red-50 text-red-700' : ''}`}
+                      style={!isCorrect && !isSel ? { color: C.textMuted } : {}}>
+                      <span className="font-bold shrink-0">{opt}.</span>
+                      <MathContent html={text} className="[&_p]:m-0" />
+                      {isCorrect && <span className="ml-auto shrink-0 text-green-600">✓ Correct</span>}
+                      {isSel && !isCorrect && <span className="ml-auto shrink-0 text-red-500">Your answer</span>}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex gap-6 text-[12px] px-3 py-2 rounded-xl bg-slate-50" style={{ color: C.textMuted }}>
+                  <span>Your answer: <strong style={{ color: b.is_correct ? '#16a34a' : '#dc2626' }}>{b.selected ?? '—'}</strong></span>
+                  {!b.is_correct && b.correct_answer && (
+                    <span>Correct: <strong className="text-green-700">{b.correct_answer}</strong></span>
+                  )}
+                </div>
+              )}
               {b.explanation && (
-                <p className="text-[11px] italic mt-1.5 border-t pt-1.5"
-                  style={{ color: C.textMuted, borderColor: C.bg1 }}>
-                  {b.explanation}
-                </p>
+                <div className="text-[11px] italic mt-1.5 border-t pt-1.5" style={{ color: C.textMuted, borderColor: C.bg1 }}>
+                  <MathContent html={b.explanation} className="[&_p]:m-0 [&_p]:mb-1" />
+                </div>
               )}
             </div>
           </div>
@@ -1837,7 +1845,7 @@ function PracticeResultsViewer({ config, sessionId, onDone }) {
 
   useEffect(() => {
     satService.getPracticeResults(sessionId)
-      .then(res => setResults(res))
+      .then(res => setResults(res.data ?? res))
       .catch(e  => setError(e.message));
   }, [sessionId]);
 
@@ -1909,21 +1917,6 @@ export default function SATTests({ student, onTestStart, onTestEnd, defaultTab =
         </p>
       </div>
 
-      <div className="flex gap-1 rounded-xl p-1 w-fit mb-6" style={{ backgroundColor: C.bg1 }}>
-        {[
-          { key: 'mock',       label: 'Mock Tests'       },
-          { key: 'diagnostic', label: 'Diagnostic Tests' },
-          { key: 'practice',   label: 'Practice Tests'   },
-        ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-[10px] text-sm font-medium transition-colors ${
-              tab === t.key ? 'bg-white shadow-sm' : 'hover:opacity-80'
-            }`}
-            style={{ color: tab === t.key ? C.accent : C.textMuted }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {tab === 'practice' ? (
         <PracticeConfigList
