@@ -952,24 +952,7 @@ function AdaptiveTaker({ config, onFinish }) {
     const s = new Set(p); s.has(qid) ? s.delete(qid) : s.add(qid); return s;
   });
 
-  useEffect(() => {
-    satService.startSessionDirect(config._id)
-      .then(res => {
-        setSessionId(res.session_id);
-        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
-        const elapsed = res.module_1.started_at
-          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
-        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
-        setPhase('module1');
-      })
-      .catch(e => { setError(e.message); setPhase('error'); });
-  }, [config._id]);
-
-  useEffect(() => {
-    if (phase !== 'module1' && phase !== 'module2') return;
-    const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
+  // ── Submit handlers (declared before useEffects that depend on them to avoid TDZ) ──
 
   const submitM1 = useCallback(async () => {
     if (submittingRef.current) return;
@@ -1020,6 +1003,28 @@ function AdaptiveTaker({ config, onFinish }) {
     finally { submittingRef.current = false; }
   }, []);
 
+  // ── Init: start session ──
+  useEffect(() => {
+    satService.startSessionDirect(config._id)
+      .then(res => {
+        setSessionId(res.session_id);
+        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
+        const elapsed = res.module_1.started_at
+          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
+        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
+        setPhase('module1');
+      })
+      .catch(e => { setError(e.message); setPhase('error'); });
+  }, [config._id]);
+
+  // ── Timer countdown ──
+  useEffect(() => {
+    if (phase !== 'module1' && phase !== 'module2') return;
+    const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // ── Auto-submit on time-out ──
   useEffect(() => {
     if (timeLeft !== 0) return;
     if (phase === 'module1') submitM1();
@@ -1707,7 +1712,9 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
 }
 
 // ─── Practice config list ──────────────────────────────────────────────────────
-function PracticeConfigList({ onStart }) {
+// onStart:       starts a new practice session for the given config
+// onViewResults: shows the results of the latest completed session (session id passed as 2nd arg)
+function PracticeConfigList({ onStart, onViewResults }) {
   const [configs,  setConfigs]  = useState([]);
   const [history,  setHistory]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -1728,10 +1735,15 @@ function PracticeConfigList({ onStart }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const bestScores = {};
+  // Build a map of best score and latest session ID per config from completed sessions
+  const bestScores    = {};
+  const latestSession = {};
   history.filter(s => s.status === 'complete').forEach(s => {
     const id = s.practice_config_id?._id || s.practice_config_id;
-    if (!bestScores[id] || s.percentage > bestScores[id]) bestScores[id] = s.percentage;
+    if (!bestScores[id] || s.percentage > bestScores[id]) {
+      bestScores[id]    = s.percentage;
+      latestSession[id] = s._id; // session id used to fetch results
+    }
   });
 
   const filtered = subject === 'all' ? configs : configs.filter(c => c.subject === subject);
@@ -1792,11 +1804,22 @@ function PracticeConfigList({ onStart }) {
                     <span>{cfg.total_questions} questions</span><span>·</span><span>{cfg.time_limit_minutes} min</span>
                   </div>
                 </div>
-                <button onClick={() => onStart(cfg)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: C.accent }}>
-                  {best !== undefined ? 'Practice Again →' : 'Start Practice →'}
-                </button>
+                {/* Show "View Results" after completion, "Start Practice" for new attempts */}
+                {best !== undefined ? (
+                  <button
+                    onClick={() => onViewResults(cfg, latestSession[cfg._id])}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    View Results →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onStart(cfg)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    Start Practice →
+                  </button>
+                )}
               </div>
             );
           })}
@@ -1806,15 +1829,43 @@ function PracticeConfigList({ onStart }) {
   );
 }
 
+// ─── Past practice results viewer ─────────────────────────────────────────────
+// Fetches the results of a previously completed practice session and renders them.
+function PracticeResultsViewer({ config, sessionId, onDone }) {
+  const [results, setResults] = useState(null);
+  const [error,   setError]   = useState('');
+
+  useEffect(() => {
+    satService.getPracticeResults(sessionId)
+      .then(res => setResults(res))
+      .catch(e  => setError(e.message));
+  }, [sessionId]);
+
+  if (error)   return <FullScreenError error={error} onBack={onDone} />;
+  if (!results) return <FullScreenLoader text="Loading results…" spinner />;
+
+  return <PracticeResults config={config} results={results} onDone={onDone} />;
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
-export default function SATTests({ student, onTestStart, onTestEnd }) {
+// defaultTab: 'mock' | 'diagnostic' | 'practice' — driven by the sidebar selection.
+export default function SATTests({ student, onTestStart, onTestEnd, defaultTab = 'mock' }) {
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
-  const [tab,        setTab]        = useState('mock');
+  const [tab,        setTab]        = useState(defaultTab);
   const [activeTest, setActiveTest] = useState(null);
+  // activeTest: { type: 'full' | 'adaptive' | 'practice' | 'practiceView', config, sessionId? }
+
+  // Sync the active tab whenever the sidebar navigates to a different sub-page.
+  useEffect(() => { setTab(defaultTab); }, [defaultTab]);
 
   const handleStart = (payload) => {
     onTestStart?.();
     setActiveTest(payload);
+  };
+
+  // Called from PracticeConfigList when "View Results →" is clicked
+  const handleViewResults = (config, sessionId) => {
+    setActiveTest({ type: 'practiceView', config, sessionId });
   };
 
   const handleFinish = () => {
@@ -1822,6 +1873,7 @@ export default function SATTests({ student, onTestStart, onTestEnd }) {
     onTestEnd?.();
   };
 
+  // ── Full-screen test takers and result viewers ──
   if (activeTest?.type === 'full') {
     return (
       <FullTestTaker
@@ -1833,18 +1885,17 @@ export default function SATTests({ student, onTestStart, onTestEnd }) {
     );
   }
   if (activeTest?.type === 'adaptive') {
-    return (
-      <AdaptiveTaker
-        config={activeTest.config}
-        onFinish={handleFinish}
-      />
-    );
+    return <AdaptiveTaker config={activeTest.config} onFinish={handleFinish} />;
   }
   if (activeTest?.type === 'practice') {
+    return <PracticeTaker config={activeTest.config} onFinish={handleFinish} />;
+  }
+  if (activeTest?.type === 'practiceView') {
     return (
-      <PracticeTaker
+      <PracticeResultsViewer
         config={activeTest.config}
-        onFinish={handleFinish}
+        sessionId={activeTest.sessionId}
+        onDone={handleFinish}
       />
     );
   }
@@ -1875,7 +1926,10 @@ export default function SATTests({ student, onTestStart, onTestEnd }) {
       </div>
 
       {tab === 'practice' ? (
-        <PracticeConfigList onStart={cfg => handleStart({ type: 'practice', config: cfg })} />
+        <PracticeConfigList
+          onStart={cfg => handleStart({ type: 'practice', config: cfg })}
+          onViewResults={handleViewResults}
+        />
       ) : (
         <AdaptiveConfigList
           key={tab}

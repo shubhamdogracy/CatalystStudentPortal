@@ -4,12 +4,8 @@ import { authService, studentService } from './services/api';
 import SignIn        from './components/auth/SignIn';
 import Layout        from './components/layout/Layout';
 import Dashboard     from './pages/Dashboard/Dashboard';
-import Sessions      from './pages/Sessions/Sessions';
-import Slots         from './pages/Slots/Slots';
-import Assignments   from './pages/Assignments/Assignments';
 import Communication from './pages/Communication/Communication';
 import Profile       from './pages/Profile/Profile';
-import PracticeTime  from './pages/PracticeTime/PracticeTime';
 import SATTests      from './pages/SATTests/SATTests';
 
 export default function App() {
@@ -67,29 +63,47 @@ export default function App() {
 
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
-  // Redirect guests away from paid-only pages
-  const safePage = isGuest && !['dashboard', 'assignments', 'profile', 'practiceTime'].includes(page)
-    ? 'dashboard'
-    : page;
-  // satTests is paid-only (not in the guest allow-list above, so guests get redirected to dashboard)
+  // Redirect guests away from paid-only pages; new SAT sub-pages are paid-only.
+  const GUEST_ALLOWED = ['dashboard', 'profile'];
+  const safePage = isGuest && !GUEST_ALLOWED.includes(page) ? 'dashboard' : page;
+
+  // Shared props for every SATTests instance (collapses sidebar during a test).
+  const satTestProps = {
+    student,
+    onTestStart: () => setSidebarCollapsed(true),
+    onTestEnd:   () => setSidebarCollapsed(false),
+  };
 
   const renderPage = () => {
     switch (safePage) {
-      case 'dashboard':     return <Dashboard student={student} onNavigate={setPage} />;
-      case 'sessions':      return <Sessions onNavigate={setPage} />;
-      case 'slots':         return <Slots />;
-      case 'assignments':   return <Assignments student={student} />;
-      case 'communication': return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
-      case 'practiceTime':  return <PracticeTime />;
-      case 'satTests':      return (
-        <SATTests
-          student={student}
-          onTestStart={() => setSidebarCollapsed(true)}
-          onTestEnd={() => setSidebarCollapsed(false)}
-        />
-      );
-      case 'profile':       return <Profile student={student} onUpdateStudent={(updated) => setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))} />;
-      default:              return <Dashboard onNavigate={setPage} />;
+      case 'dashboard':
+        return <Dashboard student={student} onNavigate={setPage} />;
+
+      // ── SAT Tests sub-pages (each pre-selects its tab via defaultTab) ──
+      case 'satDiagnostic':
+        return <SATTests {...satTestProps} defaultTab="diagnostic" />;
+      case 'satMock':
+        return <SATTests {...satTestProps} defaultTab="mock" />;
+      case 'satPractice':
+        return <SATTests {...satTestProps} defaultTab="practice" />;
+
+      // ── Communication ──
+      case 'communication':
+        return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
+
+      // ── Account ──
+      case 'profile':
+        return (
+          <Profile
+            student={student}
+            onUpdateStudent={(updated) =>
+              setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))
+            }
+          />
+        );
+
+      default:
+        return <Dashboard onNavigate={setPage} />;
     }
   };
 
