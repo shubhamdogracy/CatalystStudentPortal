@@ -1477,7 +1477,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
   const [sessions,     setSessions]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
-  const [filter,       setFilter]       = useState(defaultFilter);
+  const [filter,       _setFilter]      = useState(defaultFilter);
   const [viewModal,    setViewModal]    = useState(null);
   const [modalLoading, setModalLoading] = useState(null);
 
