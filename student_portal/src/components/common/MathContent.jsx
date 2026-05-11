@@ -1,27 +1,32 @@
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-// Pre-processes an HTML string and replaces LaTeX delimiters with
-// KaTeX-rendered HTML. Handles $$...$$ (display) and $...$ (inline).
-const renderLatex = (html) => {
-  if (!html) return html;
+const renderLatex = (source) => {
+  if (!source) return source;
+  let out = source;
 
-  // Display math: $$...$$
-  let out = html.replace(/\$\$([\s\S]+?)\$\$/g, (match, tex) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
-    } catch {
-      return match;
-    }
+  // Display math: $$...$$  (process before inline to avoid partial matches)
+  out = out.replace(/\$\$([\s\S]+?)\$\$/g, (match, tex) => {
+    try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
+    catch { return match; }
   });
 
-  // Inline math: $...$ (not preceded or followed by another $)
+  // Display math: \[...\]
+  out = out.replace(/\\\[([\s\S]+?)\\\]/g, (match, tex) => {
+    try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
+    catch { return match; }
+  });
+
+  // Inline math: \(...\)
+  out = out.replace(/\\\(([\s\S]+?)\\\)/g, (match, tex) => {
+    try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
+    catch { return match; }
+  });
+
+  // Inline math: $...$  (no newlines inside, avoids double-dollar already consumed)
   out = out.replace(/\$([^$\n<>]+?)\$/g, (match, tex) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
-    } catch {
-      return match;
-    }
+    try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
+    catch { return match; }
   });
 
   return out;

@@ -1651,21 +1651,13 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
                 </div>
 
                 {isDone ? (
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => openViewResults(g, latestRw, latestMath)}
-                      disabled={!!modalLoading}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-60 transition-opacity"
-                      style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-                      {isLoadingThis ? 'Loading results…' : 'View Results →'}
-                    </button>
-                    <button
-                      onClick={() => onStart({ type: 'full', rw: g.rw, math: g.math, seriesName: g.seriesName })}
-                      disabled={!canStart || !!modalLoading}
-                      className="w-full py-2 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity border border-gray-200 text-gray-600 bg-gray-50">
-                      Retake Test
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => openViewResults(g, latestRw, latestMath)}
+                    disabled={!!modalLoading}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-60 transition-opacity"
+                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                    {isLoadingThis ? 'Loading results…' : 'View Results →'}
+                  </button>
                 ) : (
                   <button onClick={() => onStart({ type: 'full', rw: g.rw, math: g.math, seriesName: g.seriesName })}
                     disabled={!canStart}
@@ -1680,27 +1672,35 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
 
           {flatsToShow.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {flatsToShow.map(cfg => (
+              {flatsToShow.map(cfg => {
+                const flatDone = getConfigSessions(sessions, cfg._id).length > 0;
+                return (
                 <div key={cfg._id}
-                  className="bg-white rounded-2xl border border-slate-200 hover:border-indigo-200 hover:shadow-md transition-all p-5 flex flex-col gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLE[cfg.type] || 'bg-gray-100 text-gray-600'}`}>{cfg.type}</span>
+                  className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${flatDone ? 'border-green-200' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLE[cfg.type] || 'bg-gray-100 text-gray-600'}`}>{cfg.type}</span>
+                      </div>
                     </div>
+                    {flatDone && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-4 text-xs text-slate-500">
                     <span>{cfg.module_1?.total_questions}Q / module</span><span>·</span>
                     <span>{cfg.module_1?.time_limit_minutes}min / module</span><span>·</span><span>2 modules</span>
                   </div>
-                  <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                    Start Test →
-                  </button>
+                  {!flatDone && (
+                    <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
+                      style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                      Start Test →
+                    </button>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
