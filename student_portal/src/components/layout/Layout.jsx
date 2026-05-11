@@ -2,12 +2,12 @@ import { Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
 
 const PAGE_META = {
-  dashboard:     { title: 'Dashboard',        subtitle: 'Welcome to your learning portal' },
-  assignments:   { title: 'Assignments',       subtitle: 'Track and submit your assignments' },
-  sessions:      { title: 'My Sessions',       subtitle: 'Upcoming and past mentor sessions' },
-  slots:         { title: 'Book a Slot',       subtitle: 'Available one-on-one slots from your mentor' },
-  communication: { title: 'Communication',     subtitle: 'Chat with your mentor' },
-  profile:       { title: 'My Profile',        subtitle: 'Manage your account information' },
+  dashboard:     { title: 'Dashboard',         subtitle: 'Welcome to your learning portal'              },
+  satDiagnostic: { title: 'Diagnostic Tests',  subtitle: 'Assess your current SAT readiness'           },
+  satMock:       { title: 'Mock Tests',        subtitle: 'Full-length adaptive SAT mock exams'         },
+  satPractice:   { title: 'Practice Tests',    subtitle: 'Topic-focused practice with instant results' },
+  communication: { title: 'Chat',              subtitle: 'Chat with your mentor'                       },
+  profile:       { title: 'My Profile',        subtitle: 'Manage your account information'             },
 };
 
 function formatDate() {

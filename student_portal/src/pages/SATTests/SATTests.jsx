@@ -319,35 +319,8 @@ function AdaptiveTaker({ config, onFinish }) {
     const s = new Set(p); s.has(qid) ? s.delete(qid) : s.add(qid); return s;
   });
 
-  // ── Init: start session ──
-  useEffect(() => {
-    satService.startSessionDirect(config._id)
-      .then(res => {
-        setSessionId(res.session_id);
-        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
-        const elapsed = res.module_1.started_at
-          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
-        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
-        setPhase('module1');
-      })
-      .catch(e => { setError(e.message); setPhase('error'); });
-  }, [config._id]);
+  // ── Submit handlers (declared before useEffects that depend on them to avoid TDZ) ──
 
-  // ── Timer countdown ──
-  useEffect(() => {
-    if (phase !== 'module1' && phase !== 'module2') return;
-    const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  // ── Auto-submit on time-out ──
-  useEffect(() => {
-    if (timeLeft !== 0) return;
-    if (phase === 'module1') submitM1();
-    else if (phase === 'module2') submitM2();
-  }, [timeLeft, phase, submitM1, submitM2]);
-
-  // ── Submit handlers ──
   const submitM1 = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -396,6 +369,34 @@ function AdaptiveTaker({ config, onFinish }) {
     } catch (e) { setError(e.message); setPhase('module2'); }
     finally { submittingRef.current = false; }
   }, []);
+
+  // ── Init: start session ──
+  useEffect(() => {
+    satService.startSessionDirect(config._id)
+      .then(res => {
+        setSessionId(res.session_id);
+        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
+        const elapsed = res.module_1.started_at
+          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
+        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
+        setPhase('module1');
+      })
+      .catch(e => { setError(e.message); setPhase('error'); });
+  }, [config._id]);
+
+  // ── Timer countdown ──
+  useEffect(() => {
+    if (phase !== 'module1' && phase !== 'module2') return;
+    const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // ── Auto-submit on time-out ──
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+    if (phase === 'module1') submitM1();
+    else if (phase === 'module2') submitM2();
+  }, [timeLeft, phase, submitM1, submitM2]);
 
   const handleAnswer = (qid, choice) => setAnswers(p => ({ ...p, [qid]: choice }));
   const handleNext   = () => {
@@ -781,8 +782,8 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
                 <span>·</span><span>2 modules</span>
               </div>
               <button onClick={() => onStart(cfg)}
-                className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: C.accent }}>
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+                style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
                 Start Test →
               </button>
             </div>
@@ -802,7 +803,10 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
   );
 }
 
-function PracticeConfigList({ onStart }) {
+// ─── Practice config list ──────────────────────────────────────────────────────
+// onStart:       starts a new practice session for the given config
+// onViewResults: shows the results of the latest completed session (session id passed as 2nd arg)
+function PracticeConfigList({ onStart, onViewResults }) {
   const [configs,  setConfigs]  = useState([]);
   const [history,  setHistory]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -823,10 +827,15 @@ function PracticeConfigList({ onStart }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const bestScores = {};
+  // Build a map of best score and latest session ID per config from completed sessions
+  const bestScores    = {};
+  const latestSession = {};
   history.filter(s => s.status === 'complete').forEach(s => {
     const id = s.practice_config_id?._id || s.practice_config_id;
-    if (!bestScores[id] || s.percentage > bestScores[id]) bestScores[id] = s.percentage;
+    if (!bestScores[id] || s.percentage > bestScores[id]) {
+      bestScores[id]    = s.percentage;
+      latestSession[id] = s._id; // session id used to fetch results
+    }
   });
 
   const filtered = subject === 'all' ? configs : configs.filter(c => c.subject === subject);
@@ -887,11 +896,22 @@ function PracticeConfigList({ onStart }) {
                     <span>{cfg.total_questions} questions</span><span>·</span><span>{cfg.time_limit_minutes} min</span>
                   </div>
                 </div>
-                <button onClick={() => onStart(cfg)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: C.accent }}>
-                  {best !== undefined ? 'Practice Again →' : 'Start Practice →'}
-                </button>
+                {/* Show "View Results" after completion, "Start Practice" for new attempts */}
+                {best !== undefined ? (
+                  <button
+                    onClick={() => onViewResults(cfg, latestSession[cfg._id])}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    View Results →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onStart(cfg)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    Start Practice →
+                  </button>
+                )}
               </div>
             );
           })}
@@ -901,16 +921,43 @@ function PracticeConfigList({ onStart }) {
   );
 }
 
+// ─── Past practice results viewer ─────────────────────────────────────────────
+// Fetches the results of a previously completed practice session and renders them.
+function PracticeResultsViewer({ config, sessionId, onDone }) {
+  const [results, setResults] = useState(null);
+  const [error,   setError]   = useState('');
+
+  useEffect(() => {
+    satService.getPracticeResults(sessionId)
+      .then(res => setResults(res))
+      .catch(e  => setError(e.message));
+  }, [sessionId]);
+
+  if (error)   return <FullScreenError error={error} onBack={onDone} />;
+  if (!results) return <FullScreenLoader text="Loading results…" spinner />;
+
+  return <PracticeResults config={config} results={results} onDone={onDone} />;
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
-export default function SATTests({ student, onTestStart, onTestEnd }) {
+// defaultTab: 'mock' | 'diagnostic' | 'practice' — driven by the sidebar selection.
+export default function SATTests({ student, onTestStart, onTestEnd, defaultTab = 'mock' }) {
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
-  const [tab,        setTab]        = useState('mock');
+  const [tab,        setTab]        = useState(defaultTab);
   const [activeTest, setActiveTest] = useState(null);
-  // activeTest: { type: 'adaptive' | 'practice', config }
+  // activeTest: { type: 'adaptive' | 'practice' | 'practiceView', config, sessionId? }
+
+  // Sync the active tab whenever the sidebar navigates to a different sub-page.
+  useEffect(() => { setTab(defaultTab); }, [defaultTab]);
 
   const handleStart = (type, config) => {
     onTestStart?.();
     setActiveTest({ type, config });
+  };
+
+  // Called from PracticeConfigList when "View Results →" is clicked
+  const handleViewResults = (config, sessionId) => {
+    setActiveTest({ type: 'practiceView', config, sessionId });
   };
 
   const handleFinish = () => {
@@ -918,53 +965,33 @@ export default function SATTests({ student, onTestStart, onTestEnd }) {
     onTestEnd?.();
   };
 
-  // When a test is active, render its full-screen taker directly (no page wrapper).
+  // ── Full-screen test takers and result viewers ──
   if (activeTest?.type === 'adaptive') {
-    return (
-      <AdaptiveTaker
-        config={activeTest.config}
-        onFinish={handleFinish}
-      />
-    );
+    return <AdaptiveTaker config={activeTest.config} onFinish={handleFinish} />;
   }
   if (activeTest?.type === 'practice') {
+    return <PracticeTaker config={activeTest.config} onFinish={handleFinish} />;
+  }
+  if (activeTest?.type === 'practiceView') {
     return (
-      <PracticeTaker
+      <PracticeResultsViewer
         config={activeTest.config}
-        onFinish={handleFinish}
+        sessionId={activeTest.sessionId}
+        onDone={handleFinish}
       />
     );
   }
 
   // ── Browse / landing page ──
+  // No heading or tab switcher — navigation is handled exclusively via the sidebar.
   return (
     <div className="page-content">
-      <div className="mb-5">
-        <h2 className="text-lg font-bold" style={{ color: C.text }}>SAT Tests</h2>
-        <p className="text-sm mt-0.5" style={{ color: C.textMuted }}>
-          All available tests — take them anytime at your own pace
-        </p>
-      </div>
-
-      {/* Tab switcher */}
-      <div className="flex gap-1 rounded-xl p-1 w-fit mb-6" style={{ backgroundColor: C.bg1 }}>
-        {[
-          { key: 'mock',       label: 'Mock Tests' },
-          { key: 'diagnostic', label: 'Diagnostic Tests' },
-          { key: 'practice',   label: 'Practice Tests' },
-        ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-[10px] text-sm font-medium transition-colors ${
-              tab === t.key ? 'bg-white shadow-sm' : 'hover:opacity-80'
-            }`}
-            style={{ color: tab === t.key ? C.accent : C.textMuted }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {tab === 'practice' ? (
-        <PracticeConfigList onStart={cfg => handleStart('practice', cfg)} />
+        <PracticeConfigList
+          onStart={cfg => handleStart('practice', cfg)}
+          onViewResults={handleViewResults}
+        />
       ) : (
         <AdaptiveConfigList
           key={tab}
