@@ -87,9 +87,7 @@ function FullScreenError({ error, onBack }) {
 }
 
 // ─── Module 1 → 2 transition screen ───────────────────────────────────────────
-function ModuleTransition({ m1Result, onContinue, busy }) {
-  const pct    = m1Result?.percentage ?? 0;
-  const isHard = m1Result?.tier === 'hard';
+function ModuleTransition({ onContinue, busy }) {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-6"
       style={{ backgroundColor: C.bg1 }}>
@@ -100,28 +98,9 @@ function ModuleTransition({ m1Result, onContinue, busy }) {
           ✅
         </div>
         <h2 className="text-lg font-extrabold mb-1" style={{ color: C.text }}>Module 1 Complete</h2>
-        <p className="text-[12px] mb-6" style={{ color: C.textMuted }}>
-          Your Module 2 difficulty has been set based on your score.
+        <p className="text-[12px] mb-8" style={{ color: C.textMuted }}>
+          Your Module 2 difficulty has been set based on your performance.
         </p>
-        <div className="flex justify-center gap-8 mb-5">
-          <div>
-            <p className="text-2xl font-extrabold" style={{ color: C.text }}>{pct}%</p>
-            <p className="text-[11px] mt-0.5" style={{ color: C.textMuted }}>Score</p>
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold" style={{ color: C.text }}>
-              {m1Result?.score}/{m1Result?.max_score}
-            </p>
-            <p className="text-[11px] mt-0.5" style={{ color: C.textMuted }}>Points</p>
-          </div>
-        </div>
-        <div
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold mb-6"
-          style={isHard
-            ? { backgroundColor: '#EFF6FF', color: '#1D4ED8' }
-            : { backgroundColor: C.accentLight, color: C.accent }}>
-          {isHard ? '📈 Advanced Module 2' : '📊 Standard Module 2'}
-        </div>
         <button onClick={onContinue} disabled={busy}
           className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-60 transition-all hover:opacity-90"
           style={{ backgroundColor: C.accent }}>
@@ -1102,6 +1081,8 @@ function AdaptiveTaker({ config, onFinish }) {
   );
 }
 
+const TIMED = new Set(['rw_m1', 'rw_m2', 'math_m1', 'math_m2']);
+
 // ─── Full 4-module SAT taker (R&W M1 → R&W M2 → Math M1 → Math M2) ───────────
 function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
   const [phase,       setPhase]       = useState('init');
@@ -1135,8 +1116,6 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
   questionsRef.current = questions;
   answersRef.current   = answers;
 
-  const TIMED = new Set(['rw_m1', 'rw_m2', 'math_m1', 'math_m2']);
-
   useEffect(() => {
     if (!TIMED.has(phase)) return;
     const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
@@ -1146,7 +1125,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
   useEffect(() => {
     if (timeLeft !== 0 || !TIMED.has(phaseRef.current)) return;
     submitModule();
-  }, [timeLeft]);
+  }, [timeLeft, submitModule]);
 
   useEffect(() => {
     satService.startSessionDirect(rwConfig._id)
@@ -1159,7 +1138,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
         setPhase('rw_m1');
       })
       .catch(e => { setError(e.message); setPhase('error'); });
-  }, []);
+  }, [rwConfig._id]);
 
   const submitModule = useCallback(async () => {
     if (submittingRef.current) return;
@@ -1213,7 +1192,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
       setQuestionIdx(0); setAnswers({});
       setPhase('math_m1');
     } catch (e) { setError(e.message); setPhase('error'); }
-  }, []);
+  }, [mathConfig._id]);
 
   const addNote    = (qid, text) => setNotes(p => ({ ...p, [qid]: [...(p[qid] || []), text] }));
   const deleteNote = (qid, i)    => setNotes(p => ({ ...p, [qid]: (p[qid] || []).filter((_, j) => j !== i) }));
@@ -1484,6 +1463,48 @@ const matchId = (a, b) => {
 const getConfigSessions = (sessions, configId) =>
   sessions.filter(s => matchId(s.exam_config_id, configId) && s.status === 'complete');
 
+// ─── Unlock Platform Modal ─────────────────────────────────────────────────────
+function UnlockPlatformModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-7 flex flex-col items-center text-center gap-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-3xl">
+          🔒
+        </div>
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 mb-1">Unlock the Full Platform</h3>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            This test is only available to full platform members. Upgrade your account to access
+            all diagnostic tests, practice modules, mock exams, and personalised coaching.
+          </p>
+        </div>
+        <div className="w-full flex flex-col gap-2 mt-1">
+          <a
+            href="mailto:info@catalystsat.in"
+            className="w-full py-3 rounded-xl text-sm font-extrabold text-white text-center transition-all hover:opacity-90 hover:shadow-[0_4px_20px_rgba(245,158,11,0.45)]"
+            style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}
+          >
+            🔓 Contact Us to Upgrade →
+          </a>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Mock / Diagnostic config list (grouped by series) ────────────────────────
 function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false }) {
   const [configs,      setConfigs]      = useState([]);
@@ -1493,6 +1514,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
   const [filter,       _setFilter]      = useState(defaultFilter);
   const [viewModal,    setViewModal]    = useState(null);
   const [modalLoading, setModalLoading] = useState(null);
+  const [showUnlock,   setShowUnlock]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1522,10 +1544,9 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
     }, {})
   );
 
-  const diagGroups        = allGroups.filter(g => g.type === 'diagnostic');
-  const mockGroups        = allGroups.filter(g => g.type !== 'diagnostic');
-  const visibleDiagGroups = isGuest ? diagGroups.slice(0, 1) : diagGroups;
-  const visibleGroups     = [...visibleDiagGroups, ...mockGroups];
+  const diagGroups    = allGroups.filter(g => g.type === 'diagnostic');
+  const mockGroups    = allGroups.filter(g => g.type !== 'diagnostic');
+  const visibleGroups = [...diagGroups, ...mockGroups];
 
   const bySubject = filter === 'math' || filter === 'reading_writing';
   let groupsToShow = [];
@@ -1539,7 +1560,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
     groupsToShow = mockGroups;
     flatsToShow  = standaloneConfigs.filter(c => c.type === 'mock' || !c.type);
   } else if (filter === 'diagnostic') {
-    groupsToShow = visibleDiagGroups;
+    groupsToShow = diagGroups;
     flatsToShow  = standaloneConfigs.filter(c => c.type === 'diagnostic');
   } else {
     groupsToShow = visibleGroups;
@@ -1572,6 +1593,8 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
 
   return (
     <div className="flex flex-col gap-5">
+      {showUnlock && <UnlockPlatformModal onClose={() => setShowUnlock(false)} />}
+
       {/* View Results modal overlay */}
       {viewModal && (
         <SATResultsModal
@@ -1611,46 +1634,63 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
             const latestMath = isDone ? latest(mathSessions) : null;
             const isLoadingThis = modalLoading === g.seriesName;
 
+            // Guest lock: accessible if ALL present configs are demo-accessible (mirrors admin logic)
+            const presentCfgs = [g.rw, g.math].filter(Boolean);
+            const isGuestLocked = isGuest && !(presentCfgs.length > 0 && presentCfgs.every(c => c.is_demo_accessible));
+
             return (
               <div key={g.seriesName}
-                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-4 ${isDone ? 'border-green-200 hover:border-green-300 hover:shadow-md' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'}`}>
+                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-4 ${
+                  isGuestLocked
+                    ? 'border-slate-200 opacity-75'
+                    : isDone
+                      ? 'border-green-200 hover:border-green-300 hover:shadow-md'
+                      : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'
+                }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{g.seriesName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900">{g.seriesName}</p>
+                      {isGuestLocked && <span className="text-base">🔒</span>}
+                    </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeBadge}`}>{typeLabel}</span>
                       <span className="text-[10px] text-slate-400">4 modules · 2 R&amp;W + 2 Math · Adaptive</span>
+                      {!isGuestLocked && isGuest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
                     </div>
                   </div>
-                  {isDone && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
+                  {isDone && !isGuestLocked && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">Reading &amp; Writing</p>
+                  <div className={`border rounded-xl p-3 ${isGuestLocked ? 'bg-slate-50 border-slate-100' : 'bg-blue-50 border-blue-100'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isGuestLocked ? 'text-slate-400' : 'text-blue-700'}`}>Reading &amp; Writing</p>
                     {g.rw
-                      ? <>
-                          <p className="text-xs text-slate-600">{g.rw.module_1?.total_questions}Q / module · {g.rw.module_1?.time_limit_minutes}min · 2 modules</p>
-                          {latestRw?.total_score != null && (
-                            <p className="text-sm font-bold text-blue-800 mt-1">{latestRw.total_score}/{(latestRw.module_1?.max_score || 0) + (latestRw.module_2?.max_score || 0)} correct</p>
-                          )}
-                        </>
+                      ? <p className="text-xs text-slate-500">{g.rw.module_1?.total_questions}Q / module · {g.rw.module_1?.time_limit_minutes}min · 2 modules</p>
                       : <p className="text-xs text-slate-400 italic">Not configured</p>}
+                    {!isGuestLocked && latestRw?.total_score != null && (
+                      <p className="text-sm font-bold text-blue-800 mt-1">{latestRw.total_score}/{(latestRw.module_1?.max_score || 0) + (latestRw.module_2?.max_score || 0)} correct</p>
+                    )}
                   </div>
-                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider mb-1.5">Math</p>
+                  <div className={`border rounded-xl p-3 ${isGuestLocked ? 'bg-slate-50 border-slate-100' : 'bg-purple-50 border-purple-100'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isGuestLocked ? 'text-slate-400' : 'text-purple-700'}`}>Math</p>
                     {g.math
-                      ? <>
-                          <p className="text-xs text-slate-600">{g.math.module_1?.total_questions}Q / module · {g.math.module_1?.time_limit_minutes}min · 2 modules</p>
-                          {latestMath?.total_score != null && (
-                            <p className="text-sm font-bold text-purple-800 mt-1">{latestMath.total_score}/{(latestMath.module_1?.max_score || 0) + (latestMath.module_2?.max_score || 0)} correct</p>
-                          )}
-                        </>
+                      ? <p className="text-xs text-slate-500">{g.math.module_1?.total_questions}Q / module · {g.math.module_1?.time_limit_minutes}min · 2 modules</p>
                       : <p className="text-xs text-slate-400 italic">Not configured</p>}
+                    {!isGuestLocked && latestMath?.total_score != null && (
+                      <p className="text-sm font-bold text-purple-800 mt-1">{latestMath.total_score}/{(latestMath.module_1?.max_score || 0) + (latestMath.module_2?.max_score || 0)} correct</p>
+                    )}
                   </div>
                 </div>
 
-                {isDone ? (
+                {isGuestLocked ? (
+                  <button
+                    onClick={() => setShowUnlock(true)}
+                    className="w-full py-3 rounded-xl text-sm font-extrabold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-[0_4px_20px_rgba(245,158,11,0.45)] active:scale-[0.98]"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}>
+                    🔓 Unlock to Access
+                  </button>
+                ) : isDone ? (
                   <button
                     onClick={() => openViewResults(g, latestRw, latestMath)}
                     disabled={!!modalLoading}
@@ -1674,24 +1714,41 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {flatsToShow.map(cfg => {
                 const flatDone = getConfigSessions(sessions, cfg._id).length > 0;
+                const isFlatGuestLocked = isGuest && !cfg.is_demo_accessible;
                 return (
                 <div key={cfg._id}
-                  className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${flatDone ? 'border-green-200' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'}`}>
+                  className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${
+                    isFlatGuestLocked
+                      ? 'border-slate-200 opacity-75'
+                      : flatDone
+                        ? 'border-green-200'
+                        : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'
+                  }`}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                        {isFlatGuestLocked && <span className="text-base">🔒</span>}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLE[cfg.type] || 'bg-gray-100 text-gray-600'}`}>{cfg.type}</span>
+                        {!isFlatGuestLocked && isGuest && cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
                       </div>
                     </div>
-                    {flatDone && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
+                    {flatDone && !isFlatGuestLocked && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-4 text-xs text-slate-500">
                     <span>{cfg.module_1?.total_questions}Q / module</span><span>·</span>
                     <span>{cfg.module_1?.time_limit_minutes}min / module</span><span>·</span><span>2 modules</span>
                   </div>
-                  {!flatDone && (
+                  {isFlatGuestLocked ? (
+                    <button
+                      onClick={() => setShowUnlock(true)}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                      🔒 Unlock to Access
+                    </button>
+                  ) : !flatDone && (
                     <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
                       className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
                       style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
@@ -1703,16 +1760,6 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
               })}
             </div>
           )}
-
-          {isGuest && (filter === 'diagnostic' || filter === 'all') && diagGroups.length > 1 && (
-            <div className="flex items-center gap-4 px-5 py-4 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50">
-              <span className="text-2xl shrink-0">🔒</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-indigo-800">More diagnostic tests available</p>
-                <p className="text-xs text-indigo-600 mt-0.5">Unlock all diagnostic tests by upgrading to a full account.</p>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -1722,12 +1769,13 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
 // ─── Practice config list ──────────────────────────────────────────────────────
 // onStart:       starts a new practice session for the given config
 // onViewResults: shows the results of the latest completed session (session id passed as 2nd arg)
-function PracticeConfigList({ onStart, onViewResults }) {
-  const [configs,  setConfigs]  = useState([]);
-  const [history,  setHistory]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState('');
-  const [subject,  setSubject]  = useState('all');
+function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
+  const [configs,     setConfigs]     = useState([]);
+  const [history,     setHistory]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState('');
+  const [subject,     setSubject]     = useState('all');
+  const [showUnlock,  setShowUnlock]  = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1760,6 +1808,8 @@ function PracticeConfigList({ onStart, onViewResults }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {showUnlock && <UnlockPlatformModal onClose={() => setShowUnlock(false)} />}
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
           <span>{error}</span>
@@ -1786,19 +1836,23 @@ function PracticeConfigList({ onStart, onViewResults }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filtered.map(cfg => {
             const best = bestScores[cfg._id];
+            const isPracticeGuestLocked = isGuest && !cfg.is_demo_accessible;
             return (
               <div key={cfg._id}
-                className="bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all p-5 flex flex-col gap-3"
-                style={{ borderColor: C.border }}>
+                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${isPracticeGuestLocked ? 'border-slate-200 opacity-75' : 'hover:shadow-md'}`}
+                style={{ borderColor: isPracticeGuestLocked ? undefined : C.border }}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                      {isPracticeGuestLocked && <span className="text-base">🔒</span>}
+                    </div>
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
                       {cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
                     </div>
                   </div>
-                  {best !== undefined && (
+                  {best !== undefined && !isPracticeGuestLocked && (
                     <div className={`shrink-0 text-center px-2.5 py-1 rounded-xl ${best >= 70 ? 'bg-green-50' : best >= 50 ? 'bg-yellow-50' : 'bg-red-50'}`}>
                       <p className={`text-xs font-bold ${best >= 70 ? 'text-green-700' : best >= 50 ? 'text-yellow-700' : 'text-red-600'}`}>{best}%</p>
                       <p className="text-[9px] text-slate-400">best</p>
@@ -1812,12 +1866,18 @@ function PracticeConfigList({ onStart, onViewResults }) {
                     <span>{cfg.total_questions} questions</span><span>·</span><span>{cfg.time_limit_minutes} min</span>
                   </div>
                 </div>
-                {/* Show "View Results" after completion, "Start Practice" for new attempts */}
-                {best !== undefined ? (
+                {isPracticeGuestLocked ? (
+                  <button
+                    onClick={() => setShowUnlock(true)}
+                    className="w-full py-3 rounded-xl text-sm font-extrabold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-[0_4px_20px_rgba(245,158,11,0.45)] active:scale-[0.98]"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}>
+                    🔓 Unlock to Access
+                  </button>
+                ) : best !== undefined ? (
                   <button
                     onClick={() => onViewResults(cfg, latestSession[cfg._id])}
                     className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
                     View Results →
                   </button>
                 ) : (
@@ -1922,6 +1982,7 @@ export default function SATTests({ student, onTestStart, onTestEnd, defaultTab =
         <PracticeConfigList
           onStart={cfg => handleStart({ type: 'practice', config: cfg })}
           onViewResults={handleViewResults}
+          isGuest={isGuest}
         />
       ) : (
         <AdaptiveConfigList

@@ -63,8 +63,8 @@ export default function App() {
 
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
-  // Redirect guests away from paid-only pages; new SAT sub-pages are paid-only.
-  const GUEST_ALLOWED = ['dashboard', 'profile'];
+  // Redirect guests away from paid-only pages; SAT test pages are accessible to guests.
+  const GUEST_ALLOWED = ['dashboard', 'profile', 'satDiagnostic', 'satPractice', 'satMock'];
   const safePage = isGuest && !GUEST_ALLOWED.includes(page) ? 'dashboard' : page;
 
   // Shared props for every SATTests instance (collapses sidebar during a test).

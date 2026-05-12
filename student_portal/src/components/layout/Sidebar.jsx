@@ -36,7 +36,6 @@ const NAV_GROUPS = [
       {
         id: 'structuredTests', label: 'Structured Tests', icon: GraduationCap,
         iconColor: '#7c3aed', iconBg: '#ede9fe',          // violet
-        guestLocked: true,
         // Order: Diagnostic → Practice → Mock
         subItems: [
           {
