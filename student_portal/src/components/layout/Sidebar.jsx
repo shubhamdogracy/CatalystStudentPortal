@@ -1,32 +1,30 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,  // Dashboard
-  MessageSquare,    // Chat
-  User,             // My Profile
+  LayoutDashboard,
+  MessageSquare,
+  User,
   LogOut,
-  GraduationCap,    // Structured Tests (parent)
+  GraduationCap,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Lock,
-  ClipboardList,    // Diagnostic Tests
-  BookOpenCheck,    // Practice Tests
-  BarChart2,        // Mock Tests
+  ClipboardList,
+  BookOpenCheck,
+  BarChart2,
 } from 'lucide-react';
 import BAvatar from 'boring-avatars';
 import catalystLogo from '../../assets/catalyst-logo.png';
 
-// ── Color tokens per nav item ──────────────────────────────────────────────────
-// Each item carries its own icon color + light background so icons are always
-// colorful and recognisable, regardless of active/hover state (matching the
-// mentor and ops portal visual style).
 const NAV_GROUPS = [
   {
     label: 'Dashboard',
     items: [
       {
         id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard,
-        iconColor: '#6366f1', iconBg: '#eef2ff',   // indigo
+        path: '/dashboard',
+        iconColor: '#6366f1', iconBg: '#eef2ff',
       },
     ],
   },
@@ -35,21 +33,11 @@ const NAV_GROUPS = [
     items: [
       {
         id: 'structuredTests', label: 'Structured Tests', icon: GraduationCap,
-        iconColor: '#7c3aed', iconBg: '#ede9fe',          // violet
-        // Order: Diagnostic → Practice → Mock
+        iconColor: '#7c3aed', iconBg: '#ede9fe',
         subItems: [
-          {
-            id: 'satDiagnostic', label: 'Diagnostic Tests', icon: ClipboardList,
-            iconColor: '#0d9488', iconBg: '#f0fdfa',        // teal
-          },
-          {
-            id: 'satPractice', label: 'Practice Tests', icon: BookOpenCheck,
-            iconColor: '#16a34a', iconBg: '#f0fdf4',        // green
-          },
-          {
-            id: 'satMock', label: 'Mock Tests', icon: BarChart2,
-            iconColor: '#d97706', iconBg: '#fffbeb',        // amber
-          },
+          { id: 'satDiagnostic', label: 'Diagnostic Tests', icon: ClipboardList, path: '/sat/diagnostic', iconColor: '#0d9488', iconBg: '#f0fdfa' },
+          { id: 'satPractice',   label: 'Practice Tests',   icon: BookOpenCheck,  path: '/sat/practice',   iconColor: '#16a34a', iconBg: '#f0fdf4' },
+          { id: 'satMock',       label: 'Mock Tests',       icon: BarChart2,      path: '/sat/mock',       iconColor: '#d97706', iconBg: '#fffbeb' },
         ],
       },
     ],
@@ -59,7 +47,8 @@ const NAV_GROUPS = [
     items: [
       {
         id: 'communication', label: 'Chat', icon: MessageSquare,
-        iconColor: '#db2777', iconBg: '#fdf2f8',            // pink
+        path: '/communication',
+        iconColor: '#db2777', iconBg: '#fdf2f8',
         guestLocked: true, badgeKey: 'chat',
       },
     ],
@@ -69,25 +58,22 @@ const NAV_GROUPS = [
     items: [
       {
         id: 'profile', label: 'My Profile', icon: User,
-        iconColor: '#2563eb', iconBg: '#eff6ff',            // blue
+        path: '/profile',
+        iconColor: '#2563eb', iconBg: '#eff6ff',
       },
     ],
   },
 ];
 
-// ── Helper: find expandable parent that contains the currently active sub-page ─
-function getParentOfActive(activeId) {
+function getParentOfActive(pathname) {
   for (const group of NAV_GROUPS) {
     for (const item of group.items) {
-      if (item.subItems?.some(s => s.id === activeId)) return item;
+      if (item.subItems?.some(s => s.path === pathname)) return item;
     }
   }
   return null;
 }
 
-// ── Coloured icon container ────────────────────────────────────────────────────
-// Wraps the Lucide icon in a small rounded square with a tinted background,
-// replicating the visual style seen in the mentor / ops portals.
 function IconBox({ icon: Icon, iconColor, iconBg, size = 18, boxSize = 32, locked = false }) {
   return (
     <span
@@ -104,8 +90,6 @@ function IconBox({ icon: Icon, iconColor, iconBg, size = 18, boxSize = 32, locke
 }
 
 export default function Sidebar({
-  active,
-  onNavigate,
   onLogout,
   collapsed,
   onToggle,
@@ -113,12 +97,11 @@ export default function Sidebar({
   chatUnreadCount = 0,
   isGuest = false,
 }) {
-  // Sections manually toggled open/closed by the user.
+  const navigate         = useNavigate();
+  const { pathname }     = useLocation();
   const [manualSections, setManualSections] = useState(() => new Set());
 
-  // The parent of the active page is always kept open — derived, not stored in state.
-  // This avoids calling setState inside an effect (which triggers cascading renders).
-  const activeParentId = getParentOfActive(active)?.id;
+  const activeParentId = getParentOfActive(pathname)?.id;
   const openSections   = activeParentId
     ? new Set([...manualSections, activeParentId])
     : manualSections;
@@ -126,8 +109,6 @@ export default function Sidebar({
   const toggleSection = (id) =>
     setManualSections(prev => {
       const next = new Set(prev);
-      // If this section is forced open by the active page, toggling just adds it
-      // to manualSections so it can be explicitly closed by the user.
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
@@ -137,7 +118,7 @@ export default function Sidebar({
       className="bg-white flex flex-col fixed top-0 left-0 h-screen z-[100] transition-all duration-300 overflow-hidden border-r border-gray-100"
       style={{ width: collapsed ? 72 : 250, boxShadow: '2px 0 12px rgba(0,0,0,0.04)' }}
     >
-      {/* ── Brand + collapse toggle ────────────────────────────────────────── */}
+      {/* Brand + collapse toggle */}
       <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2 min-h-[72px]">
         {!collapsed && (
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -159,7 +140,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* ── User card ─────────────────────────────────────────────────────── */}
+      {/* User card */}
       <div className={`border-b border-gray-100 flex items-center py-3.5 ${collapsed ? 'justify-center px-2' : 'gap-2.5 px-4'}`}>
         <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-teal-100">
           <BAvatar size={36} name={student?.name || 'Student'} variant="beam" />
@@ -179,11 +160,10 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── Navigation ────────────────────────────────────────────────────── */}
+      {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto">
         {NAV_GROUPS.map(({ label: groupLabel, items }) => (
           <div key={groupLabel} className="mb-1">
-            {/* Group label — hidden when collapsed */}
             {!collapsed && (
               <p className="text-[10px] font-extrabold text-teal-600 uppercase tracking-[1.2px] px-5 pt-3 pb-1.5">
                 {groupLabel}
@@ -191,24 +171,22 @@ export default function Sidebar({
             )}
 
             {items.map((item) => {
-              const { id, label, icon, iconColor, iconBg, badgeKey, guestLocked, subItems } = item;
-              const locked      = isGuest && guestLocked;
-              const badgeCount  = badgeKey === 'chat' ? chatUnreadCount : 0;
-              const isActive    = active === id;
+              const { id, label, icon, iconColor, iconBg, badgeKey, guestLocked, subItems, path } = item;
+              const locked       = isGuest && guestLocked;
+              const badgeCount   = badgeKey === 'chat' ? chatUnreadCount : 0;
+              const isActive     = pathname === path;
               const hasSubItems  = Boolean(subItems?.length);
-              const anySubActive = hasSubItems && subItems.some(s => s.id === active);
+              const anySubActive = hasSubItems && subItems.some(s => s.path === pathname);
               const isExpanded   = openSections.has(id);
 
-              // ── Expandable parent item (Structured Tests) ───────────────
+              // Expandable parent (Structured Tests)
               if (hasSubItems) {
                 return (
                   <div key={id}>
-                    {/* Parent row */}
                     <div
                       onClick={() => {
                         if (locked) return;
-                        // Collapsed: jump to first sub-item; expanded: toggle accordion
-                        if (collapsed) { onNavigate(subItems[0].id); return; }
+                        if (collapsed) { navigate(subItems[0].path); return; }
                         toggleSection(id);
                       }}
                       title={
@@ -236,7 +214,6 @@ export default function Sidebar({
                         </span>
                       )}
                       {!collapsed && locked && <Lock size={12} className="shrink-0 text-gray-300" />}
-                      {/* Animated chevron */}
                       {!collapsed && !locked && (
                         <ChevronDown
                           size={14}
@@ -246,15 +223,14 @@ export default function Sidebar({
                       )}
                     </div>
 
-                    {/* Sub-items accordion — visible only when expanded & not collapsed */}
                     {!collapsed && isExpanded && !locked && (
                       <div className="flex flex-col pb-1">
-                        {subItems.map(({ id: subId, label: subLabel, icon: subIcon, iconColor: subColor, iconBg: subBg }) => {
-                          const isSubActive = active === subId;
+                        {subItems.map(({ id: subId, label: subLabel, icon: subIcon, iconColor: subColor, iconBg: subBg, path: subPath }) => {
+                          const isSubActive = pathname === subPath;
                           return (
                             <div
                               key={subId}
-                              onClick={() => onNavigate(subId)}
+                              onClick={() => navigate(subPath)}
                               className={`relative flex items-center gap-2.5 pr-3 py-1.5 text-[13px] font-medium
                                 select-none cursor-pointer transition-all
                                 ${isSubActive
@@ -263,7 +239,6 @@ export default function Sidebar({
                                 }`}
                               style={isSubActive ? { borderLeftColor: subColor, backgroundColor: subBg } : {}}
                             >
-                              {/* Slightly smaller icon box for sub-items */}
                               <IconBox icon={subIcon} iconColor={subColor} iconBg={subBg} size={18} boxSize={34} />
                               <span style={{ color: isSubActive ? subColor : '#6b7280' }}>{subLabel}</span>
                             </div>
@@ -275,11 +250,11 @@ export default function Sidebar({
                 );
               }
 
-              // ── Regular flat item ───────────────────────────────────────
+              // Regular flat item
               return (
                 <div
                   key={id}
-                  onClick={() => !locked && onNavigate(id)}
+                  onClick={() => !locked && navigate(path)}
                   title={
                     collapsed
                       ? (locked ? `${label} (Full access required)` : label)
@@ -313,7 +288,6 @@ export default function Sidebar({
                     </span>
                   )}
                   {!collapsed && locked && <Lock size={12} className="shrink-0 text-gray-300" />}
-                  {/* Unread badge for Chat */}
                   {!collapsed && !locked && badgeCount > 0 && (
                     <span className="ml-auto bg-pink-500 text-white text-[10px] font-bold px-[7px] py-[2px] rounded-[10px]">
                       {badgeCount > 99 ? '99+' : badgeCount}
@@ -331,7 +305,7 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* ── Sign out ──────────────────────────────────────────────────────── */}
+      {/* Sign out */}
       <div className="py-3 border-t border-gray-100">
         <button
           onClick={onLogout}

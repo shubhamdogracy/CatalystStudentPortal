@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Calendar,
@@ -20,7 +21,8 @@ function greeting() {
   return 'Good evening';
 }
 
-export default function Dashboard({ student, onNavigate }) {
+export default function Dashboard({ student }) {
+  const navigate = useNavigate();
   const upcoming = sessions.filter((s) => s.status === 'upcoming');
 
   const firstName     = student?.name?.split(' ')[0] || 'there';
@@ -50,7 +52,7 @@ export default function Dashboard({ student, onNavigate }) {
             <button
               className="btn btn-sm"
               style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
-              onClick={() => onNavigate('slots')}
+              onClick={() => navigate('/slots')}
             >
               <Calendar size={14} /> Book a Session
             </button>
@@ -78,7 +80,7 @@ export default function Dashboard({ student, onNavigate }) {
         <div className="card">
           <div className="card-header">
             <span className="card-title"><Calendar size={18} color="#4f46e5" /> Upcoming Sessions</span>
-            <button className="btn btn-sm btn-outline" onClick={() => onNavigate('sessions')}>
+            <button className="btn btn-sm btn-outline" onClick={() => navigate('/sessions')}>
               View all <ChevronRight size={13} />
             </button>
           </div>
@@ -88,7 +90,7 @@ export default function Dashboard({ student, onNavigate }) {
               icon={Calendar}
               message="No upcoming sessions. Book a slot with your mentor!"
               action={
-                <button className="btn btn-primary btn-sm" onClick={() => onNavigate('slots')}>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
                   Book Now
                 </button>
               }
@@ -153,8 +155,8 @@ export default function Dashboard({ student, onNavigate }) {
                 </div>
               ))}
               <div className="flex gap-2 mt-1">
-                <button className="btn btn-primary btn-sm" onClick={() => onNavigate('communication')}>Message</button>
-                <button className="btn btn-outline btn-sm" onClick={() => onNavigate('slots')}>Book Slot</button>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/communication')}>Message</button>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/slots')}>Book Slot</button>
               </div>
             </div>
           )}

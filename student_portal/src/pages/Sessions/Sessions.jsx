@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Video, Star, CheckCircle } from 'lucide-react';
 import { sessions as initialSessions } from '../../data/mockData';
 import StatCard from '../../components/common/StatCard';
@@ -8,7 +9,8 @@ import Modal from '../../components/common/Modal';
 function getDay(d) { return new Date(d).getDate(); }
 function getMon(d) { return new Date(d).toLocaleString('default', { month: 'short' }); }
 
-export default function Sessions({ onNavigate }) {
+export default function Sessions() {
+  const navigate = useNavigate();
   const [tab, setTab]                     = useState('upcoming');
   const [feedbackModal, setFeedbackModal] = useState(null);
   const [sessions]                        = useState(initialSessions);
@@ -29,7 +31,7 @@ export default function Sessions({ onNavigate }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title"><Calendar size={18} color="#4f46e5" /> My Sessions</span>
-          <button className="btn btn-primary btn-sm" onClick={() => onNavigate('slots')}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
             <Clock size={13} /> Book New Slot
           </button>
         </div>
@@ -56,7 +58,7 @@ export default function Sessions({ onNavigate }) {
               message={tab === 'upcoming' ? 'No upcoming sessions. Book a slot with your mentor!' : 'No past sessions yet.'}
               action={
                 tab === 'upcoming' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => onNavigate('slots')}>
+                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
                     Book a Slot
                   </button>
                 )

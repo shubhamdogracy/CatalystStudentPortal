@@ -1,36 +1,23 @@
-import { useState, useEffect } from 'react';
-import { authService, studentService } from './services/api';
+import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+
+import { useAuth }           from './context/AuthContext';
+import ProtectedRoute        from './routes/ProtectedRoute';
+import PublicOnlyRoute       from './routes/PublicOnlyRoute';
+import GuestBlockedRoute     from './routes/GuestBlockedRoute';
 
 import SignIn        from './components/auth/SignIn';
 import Layout        from './components/layout/Layout';
 import Dashboard     from './pages/Dashboard/Dashboard';
+import SATTests      from './pages/SATTests/SATTests';
 import Communication from './pages/Communication/Communication';
 import Profile       from './pages/Profile/Profile';
-import SATTests      from './pages/SATTests/SATTests';
+import NotFound      from './pages/NotFound/NotFound';
 
 export default function App() {
-  const [student, setStudent]                 = useState(null);
-  const [loading, setLoading]                 = useState(true);
-  const [page, setPage]                       = useState('dashboard');
+  const { student, loading, isGuest, login, logout, updateStudent } = useAuth();
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // On mount: validate cookie with server — restores session after refresh
-  useEffect(() => {
-    authService.me()
-      .then(async (res) => {
-        const base = res.data;
-        try {
-          const mentorRes = await studentService.getMentor(base._id);
-          const mentors = mentorRes.data || [];
-          setStudent({ ...base, mentors, mentor: mentors[0]?.mentor || null, batchInfo: mentors[0]?.batch || null });
-        } catch {
-          setStudent({ ...base, mentors: [] });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   if (loading) {
     return (
@@ -40,76 +27,57 @@ export default function App() {
     );
   }
 
-  const handleLogin = async (data) => {
-    try {
-      const mentorRes = await studentService.getMentor(data._id);
-      const mentors = mentorRes.data || [];
-      setStudent({ ...data, mentors, mentor: mentors[0]?.mentor || null, batchInfo: mentors[0]?.batch || null });
-    } catch {
-      setStudent({ ...data, mentors: [] });
-    }
-  };
-
-  if (!student) {
-    return <SignIn onLogin={handleLogin} />;
-  }
-
   const handleLogout = async () => {
-    await authService.logout();
-    setStudent(null);
-    setPage('dashboard');
+    await logout();
     setChatUnreadCount(0);
   };
 
-  const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
-
-  // Redirect guests away from paid-only pages; SAT test pages are accessible to guests.
-  const GUEST_ALLOWED = ['dashboard', 'profile', 'satDiagnostic', 'satPractice', 'satMock'];
-  const safePage = isGuest && !GUEST_ALLOWED.includes(page) ? 'dashboard' : page;
-
-  // Shared props for every SATTests instance (collapses sidebar during a test).
-  const satTestProps = {
+  const satProps = (tab) => ({
     student,
+    defaultTab: tab,
     onTestStart: () => setSidebarCollapsed(true),
     onTestEnd:   () => setSidebarCollapsed(false),
-  };
-
-  const renderPage = () => {
-    switch (safePage) {
-      case 'dashboard':
-        return <Dashboard student={student} onNavigate={setPage} />;
-
-      // ── SAT Tests sub-pages (each pre-selects its tab via defaultTab) ──
-      case 'satDiagnostic':
-        return <SATTests {...satTestProps} defaultTab="diagnostic" />;
-      case 'satMock':
-        return <SATTests {...satTestProps} defaultTab="mock" />;
-      case 'satPractice':
-        return <SATTests {...satTestProps} defaultTab="practice" />;
-
-      // ── Communication ──
-      case 'communication':
-        return <Communication student={student} onUnreadChange={setChatUnreadCount} />;
-
-      // ── Account ──
-      case 'profile':
-        return (
-          <Profile
-            student={student}
-            onUpdateStudent={(updated) =>
-              setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }))
-            }
-          />
-        );
-
-      default:
-        return <Dashboard onNavigate={setPage} />;
-    }
-  };
+  });
 
   return (
-    <Layout page={safePage} onNavigate={setPage} onLogout={handleLogout} student={student} chatUnreadCount={chatUnreadCount} isGuest={isGuest} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed(c => !c)}>
-      {renderPage()}
-    </Layout>
+    <Routes>
+      {/* Public only — redirect to /dashboard if already authenticated */}
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="/" element={<SignIn onLogin={login} />} />
+      </Route>
+
+      {/* Protected — requires authentication */}
+      <Route element={<ProtectedRoute />}>
+        <Route
+          element={
+            <Layout
+              onLogout={handleLogout}
+              student={student}
+              chatUnreadCount={chatUnreadCount}
+              isGuest={isGuest}
+              collapsed={sidebarCollapsed}
+              onToggleCollapsed={() => setSidebarCollapsed(c => !c)}
+            />
+          }
+        >
+          <Route path="/dashboard"     element={<Dashboard student={student} />} />
+          <Route path="/sat/diagnostic" element={<SATTests {...satProps('diagnostic')} />} />
+          <Route path="/sat/practice"   element={<SATTests {...satProps('practice')} />} />
+          <Route path="/sat/mock"       element={<SATTests {...satProps('mock')} />} />
+          <Route path="/profile"        element={<Profile student={student} onUpdateStudent={updateStudent} />} />
+
+          {/* Guest-blocked routes */}
+          <Route element={<GuestBlockedRoute />}>
+            <Route
+              path="/communication"
+              element={<Communication student={student} onUnreadChange={setChatUnreadCount} />}
+            />
+          </Route>
+        </Route>
+      </Route>
+
+      {/* 404 — catches everything else */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
