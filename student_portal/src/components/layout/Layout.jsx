@@ -1,13 +1,14 @@
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
 
 const PAGE_META = {
-  dashboard:     { title: 'Dashboard',         subtitle: 'Welcome to your learning portal'              },
-  satDiagnostic: { title: 'Diagnostic Tests',  subtitle: 'Assess your current SAT readiness'           },
-  satMock:       { title: 'Mock Tests',        subtitle: 'Full-length adaptive SAT mock exams'         },
-  satPractice:   { title: 'Practice Tests',    subtitle: 'Topic-focused practice with instant results' },
-  communication: { title: 'Chat',              subtitle: 'Chat with your mentor'                       },
-  profile:       { title: 'My Profile',        subtitle: 'Manage your account information'             },
+  '/dashboard':       { title: 'Dashboard',        subtitle: 'Welcome to your learning portal'              },
+  '/sat/diagnostic':  { title: 'Diagnostic Tests', subtitle: 'Assess your current SAT readiness'           },
+  '/sat/mock':        { title: 'Mock Tests',        subtitle: 'Full-length adaptive SAT mock exams'         },
+  '/sat/practice':    { title: 'Practice Tests',    subtitle: 'Topic-focused practice with instant results' },
+  '/communication':   { title: 'Chat',              subtitle: 'Chat with your mentor'                       },
+  '/profile':         { title: 'My Profile',        subtitle: 'Manage your account information'             },
 };
 
 function formatDate() {
@@ -36,14 +37,13 @@ function GuestBanner() {
   );
 }
 
-export default function Layout({ page, onNavigate, onLogout, student, chatUnreadCount, isGuest, collapsed, onToggleCollapsed, children }) {
-  const { title, subtitle } = PAGE_META[page] ?? PAGE_META.dashboard;
+export default function Layout({ onLogout, student, chatUnreadCount, isGuest, collapsed, onToggleCollapsed }) {
+  const { pathname } = useLocation();
+  const { title, subtitle } = PAGE_META[pathname] ?? { title: 'Student Portal', subtitle: '' };
 
   return (
     <div className="flex min-h-screen">
       <Sidebar
-        active={page}
-        onNavigate={onNavigate}
         onLogout={onLogout}
         collapsed={collapsed}
         onToggle={onToggleCollapsed}
@@ -58,7 +58,6 @@ export default function Layout({ page, onNavigate, onLogout, student, chatUnread
       >
         {isGuest && <GuestBanner />}
 
-        {/* Top bar — matches mentor portal header style */}
         <div className="bg-white px-7 py-4 flex items-center justify-between border-b border-gray-100 sticky top-0 z-50" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div>
             <div className="text-xl font-bold text-gray-900">{title}</div>
@@ -76,7 +75,7 @@ export default function Layout({ page, onNavigate, onLogout, student, chatUnread
           </div>
         </div>
 
-        {children}
+        <Outlet />
       </main>
     </div>
   );
