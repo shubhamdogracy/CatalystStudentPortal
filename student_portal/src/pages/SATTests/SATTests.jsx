@@ -1572,6 +1572,21 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
   const openViewResults = async (g, latestRw, latestMath) => {
     setModalLoading(g.seriesName);
     try {
+      // Unified attempt: both entries share the same _id
+      const isUnified = latestRw && latestMath && String(latestRw._id) === String(latestMath._id);
+      if (isUnified) {
+        const res  = await satService.getResults(latestRw._id);
+        const data = res.data || res;
+        setViewModal({
+          rwM1:       data.reading_writing?.module_1 || {},
+          rwM2:       data.reading_writing?.module_2 || {},
+          mathM1:     data.math?.module_1            || {},
+          mathM2:     data.math?.module_2            || {},
+          seriesName: g.seriesName,
+        });
+        return;
+      }
+      // Legacy: two separate session documents
       const [rwRes, mathRes] = await Promise.all([
         satService.getResults(latestRw._id),
         satService.getResults(latestMath._id),
