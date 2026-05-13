@@ -1122,24 +1122,6 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
     return () => clearInterval(id);
   }, [phase]);
 
-  useEffect(() => {
-    if (timeLeft !== 0 || !TIMED.has(phaseRef.current)) return;
-    submitModule();
-  }, [timeLeft, submitModule]);
-
-  useEffect(() => {
-    satService.startSessionDirect(rwConfig._id)
-      .then(res => {
-        sessionRef.current = res.session_id;
-        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
-        const elapsed = res.module_1.started_at
-          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
-        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
-        setPhase('rw_m1');
-      })
-      .catch(e => { setError(e.message); setPhase('error'); });
-  }, [rwConfig._id]);
-
   const submitModule = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -1165,6 +1147,24 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
     } catch (e) { setError(e.message); }
     finally { submittingRef.current = false; }
   }, []);
+
+  useEffect(() => {
+    if (timeLeft !== 0 || !TIMED.has(phaseRef.current)) return;
+    submitModule();
+  }, [timeLeft, submitModule]);
+
+  useEffect(() => {
+    satService.startSessionDirect(rwConfig._id)
+      .then(res => {
+        sessionRef.current = res.session_id;
+        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
+        const elapsed = res.module_1.started_at
+          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
+        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
+        setPhase('rw_m1');
+      })
+      .catch(e => { setError(e.message); setPhase('error'); });
+  }, [rwConfig._id]);
 
   const loadModule2 = useCallback(async () => {
     if (submittingRef.current) return;
@@ -1703,7 +1703,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
                     disabled={!canStart}
                     className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
                     style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                    {canStart ? 'Start Full Test →' : 'Test not fully configured'}
+                    {canStart ? `Start ${typeLabel} Test →` : 'Test not fully configured'}
                   </button>
                 )}
               </div>
