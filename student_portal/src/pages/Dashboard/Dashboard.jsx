@@ -1,18 +1,7 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  BookOpen,
-  Calendar,
-  CheckCircle,
-  ChevronRight,
-  Star,
-  TrendingUp,
-} from 'lucide-react';
-import { sessions } from '../../data/mockData';
-import StatCard from '../../components/common/StatCard';
-import EmptyState from '../../components/common/EmptyState';
-
-function getDay(dateStr) { return new Date(dateStr).getDate(); }
-function getMon(dateStr) { return new Date(dateStr).toLocaleString('default', { month: 'short' }); }
+import { BookOpen, Star, ChevronRight, TrendingUp } from 'lucide-react';
+import { satService } from '../../services/api';
 
 function greeting() {
   const h = new Date().getHours();
@@ -21,104 +10,323 @@ function greeting() {
   return 'Good evening';
 }
 
+// ── Circular progress ring ────────────────────────────────────────────────────
+function RingProgress({ pct, size = 72, stroke = 7, color }) {
+  const r     = (size - stroke) / 2;
+  const circ  = 2 * Math.PI * r;
+  const dash  = (pct / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ - dash}`}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.6s ease' }}
+      />
+    </svg>
+  );
+}
+
+// ── Test Progress Card ────────────────────────────────────────────────────────
+function TestCard({ emoji, title, total, completed, accentColor, bgGradient, ringColor, navPath }) {
+  const navigate  = useNavigate();
+  const pending   = Math.max(0, total - completed);
+  const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return (
+    <div
+      className="relative rounded-[18px] p-5 flex flex-col gap-3 overflow-hidden cursor-pointer group"
+      style={{ background: bgGradient, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+      onClick={() => navigate(navPath)}
+    >
+      {/* Decorative bubble */}
+      <div className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-20"
+        style={{ background: ringColor }} />
+      <div className="pointer-events-none absolute -bottom-4 -left-4 w-16 h-16 rounded-full opacity-15"
+        style={{ background: ringColor }} />
+
+      {/* Header */}
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-2.5">
+          <span className="text-2xl">{emoji}</span>
+          <h3 className="text-[14px] font-extrabold text-slate-800">{title}</h3>
+        </div>
+        <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+      </div>
+
+      {/* Ring + stats */}
+      <div className="flex items-center gap-4 relative z-10">
+        <div className="relative flex-shrink-0">
+          <RingProgress pct={pct} size={72} stroke={7} color={ringColor} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[13px] font-black" style={{ color: accentColor }}>{pct}%</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+          <div className="flex justify-between text-[12px]">
+            <span className="text-slate-500">Available</span>
+            <span className="font-bold text-slate-800">{total}</span>
+          </div>
+          <div className="flex justify-between text-[12px]">
+            <span className="text-slate-500">Completed</span>
+            <span className="font-bold" style={{ color: accentColor }}>{completed}</span>
+          </div>
+          <div className="flex justify-between text-[12px]">
+            <span className="text-slate-500">Pending</span>
+            <span className="font-bold text-slate-600">{pending}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="relative z-10">
+        <div className="w-full h-2 rounded-full bg-white/50">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${pct}%`, background: ringColor }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Overall progress ring (larger) ───────────────────────────────────────────
+function OverallRing({ pct }) {
+  const size   = 100;
+  const stroke = 9;
+  const r      = (size - stroke) / 2;
+  const circ   = 2 * Math.PI * r;
+  const dash   = (pct / 100) * circ;
+  return (
+    <div className="relative inline-flex items-center justify-center flex-shrink-0">
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <defs>
+          <linearGradient id="overallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#a855f7" />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke="url(#overallGrad)" strokeWidth={stroke}
+          strokeDasharray={`${dash} ${circ - dash}`}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dasharray 0.6s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[20px] font-black text-indigo-600 leading-none">{pct}%</span>
+        <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Overall</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function Dashboard({ student }) {
   const navigate = useNavigate();
-  const upcoming = sessions.filter((s) => s.status === 'upcoming');
 
-  const firstName     = student?.name?.split(' ')[0] || 'there';
-  const progress      = student?.progress ?? 0;
-  const sessCompleted = student?.completedSessions ?? 0;
-  const totalSessions = student?.totalSessions ?? 0;
-  const allMentors    = student?.mentors || [];
-  const enrollDate    = student?.enrollmentDate
+  const firstName  = student?.name?.split(' ')[0] || 'there';
+  const allMentors = student?.mentors || [];
+  const enrollDate = student?.enrollmentDate
     ? new Date(student.enrollmentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
+  // ── Test data ──────────────────────────────────────────────────────────────
+  const [testStats, setTestStats] = useState({
+    diagnostic: { total: 0, completed: 0 },
+    practice:   { total: 0, completed: 0 },
+    mock:       { total: 0, completed: 0 },
+  });
+  const [loadingTests, setLoadingTests] = useState(true);
+
+  const loadTestStats = useCallback(async () => {
+    try {
+      const [examRes, histRes, practiceRes, practiceHistRes] = await Promise.all([
+        satService.listExamConfigs().catch(() => ({ data: [] })),
+        satService.getHistory().catch(() => ({ data: [] })),
+        satService.listPractice().catch(() => ({ data: [] })),
+        satService.getPracticeHistory().catch(() => ({ data: [] })),
+      ]);
+
+      const examConfigs  = examRes.data        || [];
+      const history      = histRes.data        || [];
+      const practiceConf = practiceRes.data    || [];
+      const practiceHist = practiceHistRes.data || [];
+
+      // A series test has two sibling configs named "X — Math" / "X — Reading & Writing".
+      // They represent ONE test, so we group them and count the pair as a single entry.
+      const SERIES_SUFFIX = / — (Math|Reading & Writing)$/;
+      const getSeriesName = (name) => name.replace(SERIES_SUFFIX, '').trim();
+
+      const seriesConfigs     = examConfigs.filter(c =>  SERIES_SUFFIX.test(c.name));
+      const standaloneConfigs = examConfigs.filter(c => !SERIES_SUFFIX.test(c.name));
+
+      // Group series configs by series name → each group is one test
+      const seriesGroups = Object.values(
+        seriesConfigs.reduce((acc, c) => {
+          const key = getSeriesName(c.name);
+          if (!acc[key]) acc[key] = { type: c.type || 'mock', math: null, rw: null };
+          if (c.subject === 'math') acc[key].math = c;
+          else acc[key].rw = c;
+          return acc;
+        }, {})
+      );
+
+      const diagGroups      = seriesGroups.filter(g => g.type === 'diagnostic');
+      const mockGroups      = seriesGroups.filter(g => g.type !== 'diagnostic');
+      const diagStandalones = standaloneConfigs.filter(c => c.type === 'diagnostic');
+      const mockStandalones = standaloneConfigs.filter(c => c.type !== 'diagnostic');
+
+      // Unique completed config IDs from history
+      const completedExamIds = new Set(
+        history
+          .filter(s => s.status === 'complete' || s.status === 'completed')
+          .map(s => s.exam_config_id?._id || s.exam_config_id)
+          .filter(Boolean)
+      );
+
+      // A series is "completed" when BOTH its math and rw configs have been completed.
+      // A standalone is completed when its own config ID is in the set.
+      const countSeriesCompleted = (groups) =>
+        groups.filter(g =>
+          completedExamIds.has(g.math?._id) && completedExamIds.has(g.rw?._id)
+        ).length;
+
+      const diagTotal     = diagGroups.length + diagStandalones.length;
+      const mockTotal     = mockGroups.length + mockStandalones.length;
+      const diagCompleted = countSeriesCompleted(diagGroups) + diagStandalones.filter(c => completedExamIds.has(c._id)).length;
+      const mockCompleted = countSeriesCompleted(mockGroups) + mockStandalones.filter(c => completedExamIds.has(c._id)).length;
+
+      // Practice: unique completed config IDs
+      const completedPracticeIds = new Set(
+        practiceHist
+          .filter(s => s.status === 'complete' || s.status === 'completed')
+          .map(s => s.practice_config_id?._id || s.practice_config_id)
+          .filter(Boolean)
+      );
+      const practiceCompleted = practiceConf.filter(c => completedPracticeIds.has(c._id)).length;
+
+      setTestStats({
+        diagnostic: { total: diagTotal,           completed: diagCompleted },
+        practice:   { total: practiceConf.length, completed: practiceCompleted },
+        mock:       { total: mockTotal,            completed: mockCompleted },
+      });
+    } catch (e) {
+      console.error('Dashboard test stats error:', e);
+    } finally {
+      setLoadingTests(false);
+    }
+  }, []);
+
+  useEffect(() => { loadTestStats(); }, [loadTestStats]);
+
+  // Overall progress = average of the three test-type progresses
+  const diagPct     = testStats.diagnostic.total > 0 ? Math.round((testStats.diagnostic.completed / testStats.diagnostic.total) * 100) : 0;
+  const practicePct = testStats.practice.total   > 0 ? Math.round((testStats.practice.completed   / testStats.practice.total)   * 100) : 0;
+  const mockPct     = testStats.mock.total        > 0 ? Math.round((testStats.mock.completed        / testStats.mock.total)        * 100) : 0;
+
+  const activeTypes    = [diagPct, practicePct, mockPct].filter((_, i) => [testStats.diagnostic.total, testStats.practice.total, testStats.mock.total][i] > 0);
+  const overallPct     = activeTypes.length > 0 ? Math.round(activeTypes.reduce((a, b) => a + b, 0) / activeTypes.length) : 0;
+
+  const TEST_CARDS = [
+    {
+      key:       'diagnostic',
+      emoji:     '🔬',
+      title:     'Diagnostic Tests',
+      bgGradient: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+      accentColor: '#ea580c',
+      ringColor:  '#f97316',
+      navPath:   '/sat/diagnostic',
+      stats:     testStats.diagnostic,
+    },
+    {
+      key:       'practice',
+      emoji:     '📝',
+      title:     'Practice Tests',
+      bgGradient: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+      accentColor: '#16a34a',
+      ringColor:  '#22c55e',
+      navPath:   '/sat/practice',
+      stats:     testStats.practice,
+    },
+    {
+      key:       'mock',
+      emoji:     '🏆',
+      title:     'Mock Tests',
+      bgGradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+      accentColor: '#7c3aed',
+      ringColor:  '#8b5cf6',
+      navPath:   '/sat/mock',
+      stats:     testStats.mock,
+    },
+  ];
+
   return (
     <div className="page-content">
-      {/* ── Welcome banner ───────────────────────────────── */}
+      {/* ── Welcome banner ──────────────────────────────────────────────────── */}
       <div className="relative bg-gradient-to-br from-indigo-600 to-[#7c3aed] rounded-[14px] px-8 py-7 text-white mb-6 flex items-center justify-between overflow-hidden">
         <div className="pointer-events-none absolute -top-10 right-[120px] w-[200px] h-[200px] bg-white/5 rounded-full" />
-        <div className="pointer-events-none absolute -bottom-[60px] right-[60px] w-[160px] h-[160px] bg-white/5 rounded-full" />
-
+        <div className="pointer-events-none absolute -bottom-[60px] right-[60px]  w-[160px] h-[160px] bg-white/5 rounded-full" />
         <div className="relative z-10">
           <h2 className="text-[22px] font-bold text-white mb-1.5">
             {greeting()}, {firstName}! 👋
           </h2>
           <p className="text-sm text-white/75">
-            You're {progress}% through your course. Keep it up!
+            {overallPct > 0
+              ? `You're ${overallPct}% through your tests. Keep it up!`
+              : "Let's get started — your tests are waiting!"}
           </p>
-          <div className="mt-4 flex gap-2.5">
-            <button
-              className="btn btn-sm"
-              style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
-              onClick={() => navigate('/slots')}
-            >
-              <Calendar size={14} /> Book a Session
-            </button>
-          </div>
         </div>
         <div className="text-[64px] leading-none relative z-10">🎓</div>
       </div>
 
-      {/* ── Stats row ────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-5 mb-7">
-        <StatCard icon={TrendingUp} count={`${progress}%`} label="Course Progress" colorClass="indigo">
-          <div className="bg-slate-200 rounded-[10px] h-1.5 mt-2" style={{ width: 80 }}>
-            <div
-              className="h-full rounded-[10px] bg-gradient-to-r from-indigo-600 to-violet-500"
-              style={{ width: `${progress}%` }}
-            />
+      {/* ── Student Progress ────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={18} color="#4f46e5" />
+            <h2 className="text-[16px] font-extrabold text-slate-800">Student Progress</h2>
           </div>
-        </StatCard>
-        <StatCard icon={CheckCircle} count={sessCompleted}    label="Sessions Completed" colorClass="green" />
-        <StatCard icon={Calendar}    count={upcoming.length}  label="Upcoming Sessions"  colorClass="purple" />
-      </div>
-
-      {/* ── Upcoming sessions ────────────────────────────── */}
-      <div className="mb-5">
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title"><Calendar size={18} color="#4f46e5" /> Upcoming Sessions</span>
-            <button className="btn btn-sm btn-outline" onClick={() => navigate('/sessions')}>
-              View all <ChevronRight size={13} />
-            </button>
+          {/* Overall pill */}
+          <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-200 px-3.5 py-1.5 rounded-full">
+            <span className="text-[12px] font-semibold text-slate-500">Overall Progress</span>
+            <span className="text-[13px] font-black text-indigo-600">{overallPct}%</span>
           </div>
-
-          {upcoming.length === 0 ? (
-            <EmptyState
-              icon={Calendar}
-              message="No upcoming sessions. Book a slot with your mentor!"
-              action={
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
-                  Book Now
-                </button>
-              }
-            />
-          ) : (
-            upcoming.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-3.5 py-3.5 border-b border-slate-100 last:border-b-0 last:pb-0"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-[10px] flex flex-col items-center justify-center flex-shrink-0 text-white">
-                  <span className="text-base font-bold leading-none">{getDay(s.date)}</span>
-                  <span className="text-[10px] uppercase opacity-[0.85]">{getMon(s.date)}</span>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-0.5">{s.title}</h4>
-                  <p className="text-xs text-slate-500">{s.time} · {s.duration} · {s.mentor}</p>
-                </div>
-                <span className="ml-auto px-2.5 py-[3px] rounded-full text-[11px] font-semibold bg-indigo-600/10 text-indigo-600">
-                  Upcoming
-                </span>
-              </div>
-            ))
-          )}
         </div>
+
+        {/* Cards grid */}
+        {loadingTests ? (
+          <div className="grid grid-cols-3 gap-5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="rounded-[18px] h-44 bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-5">
+            {TEST_CARDS.map(card => (
+              <TestCard
+                key={card.key}
+                emoji={card.emoji}
+                title={card.title}
+                total={card.stats.total}
+                completed={card.stats.completed}
+                accentColor={card.accentColor}
+                bgGradient={card.bgGradient}
+                ringColor={card.ringColor}
+                navPath={card.navPath}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Bottom grid ──────────────────────────────────── */}
+      {/* ── Bottom grid ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-5 mb-5">
         {/* Mentor card */}
         <div className="card">
@@ -156,7 +364,6 @@ export default function Dashboard({ student }) {
               ))}
               <div className="flex gap-2 mt-1">
                 <button className="btn btn-primary btn-sm" onClick={() => navigate('/communication')}>Message</button>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/slots')}>Book Slot</button>
               </div>
             </div>
           )}
@@ -177,10 +384,9 @@ export default function Dashboard({ student }) {
                     </div>
                   )}
                   {[
-                    { label: 'Course',    value: batch.subject ? batch.subject.charAt(0).toUpperCase() + batch.subject.slice(1) : '—' },
-                    { label: 'Batch',     value: batch.name || '—' },
-                    { label: 'Enrolled',  value: enrollDate },
-                    { label: 'Sessions',  value: batch.totalSessions ? `${batch.completedSessions ?? 0} / ${batch.totalSessions}` : '—' },
+                    { label: 'Course',   value: 'SAT' },
+                    { label: 'Batch',    value: batch.name || '—' },
+                    { label: 'Enrolled', value: enrollDate },
                   ].map(({ label, value }) => (
                     <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
                       <span className="text-slate-500">{label}</span>
@@ -190,11 +396,7 @@ export default function Dashboard({ student }) {
                 </div>
               ))
             ) : (
-              [
-                { label: 'Enrolled',       value: enrollDate },
-                { label: 'Total Sessions', value: totalSessions ? `${totalSessions} sessions` : '—' },
-                { label: 'Completed',      value: totalSessions ? `${sessCompleted} of ${totalSessions}` : '—' },
-              ].map(({ label, value }) => (
+              [{ label: 'Enrolled', value: enrollDate }].map(({ label, value }) => (
                 <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
                   <span className="text-slate-500">{label}</span>
                   <span className="font-semibold text-slate-900">{value}</span>
@@ -202,16 +404,26 @@ export default function Dashboard({ student }) {
               ))
             )}
           </div>
-          <div className="mt-3.5">
-            <div className="flex justify-between text-[13px] mb-1">
-              <span className="text-slate-500">Overall Progress</span>
-              <span className="font-bold text-indigo-600">{progress}%</span>
-            </div>
-            <div className="bg-slate-200 rounded-[10px] h-1.5">
-              <div
-                className="h-full rounded-[10px] bg-gradient-to-r from-indigo-600 to-violet-500"
-                style={{ width: `${progress}%` }}
-              />
+
+          {/* Overall progress breakdown */}
+          <div className="mt-4 flex items-center gap-4">
+            <OverallRing pct={overallPct} />
+            <div className="flex flex-col gap-2 flex-1">
+              {[
+                { label: 'Diagnostic', pct: diagPct,     color: '#f97316' },
+                { label: 'Practice',   pct: practicePct, color: '#22c55e' },
+                { label: 'Mock',       pct: mockPct,     color: '#8b5cf6' },
+              ].map(({ label, pct: p, color }) => (
+                <div key={label}>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="text-slate-500">{label}</span>
+                    <span className="font-bold" style={{ color }}>{p}%</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${p}%`, background: color }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
