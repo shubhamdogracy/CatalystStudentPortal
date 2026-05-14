@@ -1990,8 +1990,8 @@ export default function SATTests({ student, onTestStart, onTestEnd, defaultTab =
         </p>
       </div>
 
-      {/* Tab switcher — lets mobile users switch without sidebar */}
-      <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl w-fit">
+      {/* Tab switcher — mobile only; desktop uses sidebar sub-links */}
+      <div className="md:hidden flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl w-fit">
         {[
           { key: 'diagnostic', label: '🔬 Diagnostic' },
           { key: 'practice',   label: '📝 Practice'   },
