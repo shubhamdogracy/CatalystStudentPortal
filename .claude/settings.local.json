@@ -10,7 +10,8 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "PowerShell(dir \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\" -Recurse | Where-Object { $_.Extension -eq \".jsx\" -or $_.Extension -eq \".js\" } | Select-Object FullName)",
       "PowerShell(cmd /c \"dir /s /b C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\")",
-      "PowerShell(head *)"
+      "PowerShell(head *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })"
     ]
   }
 }
