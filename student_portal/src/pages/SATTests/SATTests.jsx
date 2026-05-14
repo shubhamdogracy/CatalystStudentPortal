@@ -3,6 +3,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
 import MathContent from '../../components/common/MathContent';
 import { satService } from '../../services/api';
 import DesmosCalculator from '../Assignments/DesmosCalculator';
@@ -1770,6 +1772,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
 // onStart:       starts a new practice session for the given config
 // onViewResults: shows the results of the latest completed session (session id passed as 2nd arg)
 function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
+  const navigate = useNavigate();
   const [configs,     setConfigs]     = useState([]);
   const [history,     setHistory]     = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -1817,7 +1820,6 @@ function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
         </div>
       )}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <p className="text-sm text-slate-500">10 questions per test · Topic-focused · Instant results</p>
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
           {['all', 'math', 'reading_writing'].map(s => (
             <button key={s} onClick={() => setSubject(s)}
@@ -1826,6 +1828,12 @@ function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
             </button>
           ))}
         </div>
+        <button onClick={() => navigate('/sat/practice/insights')}
+          className="btn-insights flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold text-white transition-all hover:-translate-y-px active:scale-[0.97]"
+          style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}>
+          <TrendingUp size={13} />
+          Insights
+        </button>
       </div>
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -1970,12 +1978,7 @@ export default function SATTests({ student, onTestStart, onTestEnd, defaultTab =
 
   return (
     <div className="page-content">
-      <div className="mb-5">
-        <h2 className="text-lg font-bold" style={{ color: C.text }}>SAT Tests</h2>
-        <p className="text-sm mt-0.5" style={{ color: C.textMuted }}>
-          All available tests — take them anytime at your own pace
-        </p>
-      </div>
+
 
       {/* Tab switcher — mobile only; desktop uses sidebar sub-links */}
       <div className="md:hidden flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl w-fit">

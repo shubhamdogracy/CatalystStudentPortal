@@ -13,6 +13,7 @@ import SATTests      from './pages/SATTests/SATTests';
 import Communication from './pages/Communication/Communication';
 import Profile       from './pages/Profile/Profile';
 import NotFound      from './pages/NotFound/NotFound';
+import InsightsPage  from './pages/Insights/InsightsPage';
 
 export default function App() {
   const { student, loading, isGuest, login, logout, updateStudent } = useAuth();
@@ -61,9 +62,10 @@ export default function App() {
           }
         >
           <Route path="/dashboard"     element={<Dashboard student={student} />} />
-          <Route path="/sat/diagnostic" element={<SATTests {...satProps('diagnostic')} />} />
-          <Route path="/sat/practice"   element={<SATTests {...satProps('practice')} />} />
-          <Route path="/sat/mock"       element={<SATTests {...satProps('mock')} />} />
+          <Route path="/sat/diagnostic"          element={<SATTests {...satProps('diagnostic')} />} />
+          <Route path="/sat/practice"            element={<SATTests {...satProps('practice')} />} />
+          <Route path="/sat/practice/insights"   element={<InsightsPage />} />
+          <Route path="/sat/mock"                element={<SATTests {...satProps('mock')} />} />
           <Route path="/profile"        element={<Profile student={student} onUpdateStudent={updateStudent} />} />
 
           {/* Guest-blocked routes */}

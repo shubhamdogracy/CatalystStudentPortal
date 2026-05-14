@@ -42,6 +42,19 @@
   }
 }
 
+/* ── Insights button glow pulse ─────────────────────────────────── */
+@keyframes insights-glow {
+  0%, 100% { box-shadow: 0 0 6px 0px rgba(99, 102, 241, 0.55), 0 2px 8px rgba(124, 58, 237, 0.25); }
+  50%       { box-shadow: 0 0 18px 4px rgba(99, 102, 241, 0.75), 0 4px 20px rgba(124, 58, 237, 0.45); }
+}
+.btn-insights {
+  animation: insights-glow 2.2s ease-in-out infinite;
+}
+.btn-insights:hover {
+  animation: none;
+  box-shadow: 0 0 22px 6px rgba(99, 102, 241, 0.8), 0 4px 24px rgba(124, 58, 237, 0.55);
+}
+
 /* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar        { width: 5px; }
 ::-webkit-scrollbar-track  { background: transparent; }
