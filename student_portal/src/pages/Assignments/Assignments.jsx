@@ -1,6 +1,7 @@
 import { BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
 import StatCard   from '../../components/common/StatCard';
 import EmptyState from '../../components/common/EmptyState';
+import { Card, CardHeader, CardTitle } from '../../components/ui';
 
 export default function Assignments() {
   return (
@@ -11,12 +12,12 @@ export default function Assignments() {
         <StatCard icon={AlertCircle} count={0} label="Overdue"           colorClass="red"    />
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Assignments</span>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle><BookOpen size={18} color="#4f46e5" /> Assignments</CardTitle>
+        </CardHeader>
         <EmptyState icon={BookOpen} message="No assignments assigned yet." />
-      </div>
+      </Card>
     </div>
   );
 }

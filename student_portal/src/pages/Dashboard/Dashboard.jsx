@@ -1,129 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Star, ChevronRight, TrendingUp } from 'lucide-react';
+import { BookOpen, Star, TrendingUp } from 'lucide-react';
 import { satService } from '../../services/api';
+import { Button, Card, CardHeader, CardTitle } from '../../components/ui';
+import TestCard from './TestCard';
+import OverallRing from './OverallRing';
 
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
-}
-
-// ── Circular progress ring ────────────────────────────────────────────────────
-function RingProgress({ pct, size = 72, stroke = 7, color }) {
-  const r     = (size - stroke) / 2;
-  const circ  = 2 * Math.PI * r;
-  const dash  = (pct / 100) * circ;
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke={color} strokeWidth={stroke}
-        strokeDasharray={`${dash} ${circ - dash}`}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 0.6s ease' }}
-      />
-    </svg>
-  );
-}
-
-// ── Test Progress Card ────────────────────────────────────────────────────────
-function TestCard({ emoji, title, total, completed, accentColor, bgGradient, ringColor, navPath }) {
-  const navigate  = useNavigate();
-  const pending   = Math.max(0, total - completed);
-  const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  return (
-    <div
-      className="relative rounded-[18px] p-5 flex flex-col gap-3 overflow-hidden cursor-pointer group"
-      style={{ background: bgGradient, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-      onClick={() => navigate(navPath)}
-    >
-      {/* Decorative bubble */}
-      <div className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-20"
-        style={{ background: ringColor }} />
-      <div className="pointer-events-none absolute -bottom-4 -left-4 w-16 h-16 rounded-full opacity-15"
-        style={{ background: ringColor }} />
-
-      {/* Header */}
-      <div className="flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-2.5">
-          <span className="text-2xl">{emoji}</span>
-          <h3 className="text-[14px] font-extrabold text-slate-800">{title}</h3>
-        </div>
-        <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-      </div>
-
-      {/* Ring + stats */}
-      <div className="flex items-center gap-4 relative z-10">
-        <div className="relative flex-shrink-0">
-          <RingProgress pct={pct} size={72} stroke={7} color={ringColor} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[13px] font-black" style={{ color: accentColor }}>{pct}%</span>
-          </div>
-        </div>
-        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-          <div className="flex justify-between text-[12px]">
-            <span className="text-slate-500">Available</span>
-            <span className="font-bold text-slate-800">{total}</span>
-          </div>
-          <div className="flex justify-between text-[12px]">
-            <span className="text-slate-500">Completed</span>
-            <span className="font-bold" style={{ color: accentColor }}>{completed}</span>
-          </div>
-          <div className="flex justify-between text-[12px]">
-            <span className="text-slate-500">Pending</span>
-            <span className="font-bold text-slate-600">{pending}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="relative z-10">
-        <div className="w-full h-2 rounded-full bg-white/50">
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: ringColor }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Overall progress ring (larger) ───────────────────────────────────────────
-function OverallRing({ pct }) {
-  const size   = 100;
-  const stroke = 9;
-  const r      = (size - stroke) / 2;
-  const circ   = 2 * Math.PI * r;
-  const dash   = (pct / 100) * circ;
-  return (
-    <div className="relative inline-flex items-center justify-center flex-shrink-0">
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <defs>
-          <linearGradient id="overallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#a855f7" />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke="url(#overallGrad)" strokeWidth={stroke}
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.6s ease' }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[20px] font-black text-indigo-600 leading-none">{pct}%</span>
-        <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Overall</span>
-      </div>
-    </div>
-  );
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -327,10 +214,10 @@ export default function Dashboard({ student }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
 
       {/* Course Details — appears first on mobile, right column on desktop */}
-      <div className="card md:order-2">
-        <div className="card-header">
-          <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Course Details</span>
-        </div>
+      <Card className="md:order-2">
+        <CardHeader>
+          <CardTitle><BookOpen size={18} color="#4f46e5" /> Course Details</CardTitle>
+        </CardHeader>
         <div className="flex flex-col">
           {allMentors.length > 0 ? (
             allMentors.map(({ batch }, idx) => batch && (
@@ -382,13 +269,13 @@ export default function Dashboard({ student }) {
             ))}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* My Mentor — appears second on mobile, left column on desktop */}
-      <div className="card md:order-1">
-        <div className="card-header">
-          <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor{allMentors.length > 1 ? 's' : ''}</span>
-        </div>
+      <Card className="md:order-1">
+        <CardHeader>
+          <CardTitle><Star size={18} color="#4f46e5" /> My Mentor{allMentors.length > 1 ? 's' : ''}</CardTitle>
+        </CardHeader>
         {allMentors.length === 0 ? (
           <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
         ) : (
@@ -419,11 +306,11 @@ export default function Dashboard({ student }) {
               </div>
             ))}
             <div className="flex gap-2 mt-1">
-              <button className="btn btn-primary btn-sm" onClick={() => navigate('/communication')}>Message</button>
+              <Button variant="primary" size="sm" onClick={() => navigate('/communication')}>Message</Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       </div>{/* end 2-col grid */}
     </div>

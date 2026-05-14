@@ -5,6 +5,7 @@ import { sessions as initialSessions } from '../../data/mockData';
 import StatCard from '../../components/common/StatCard';
 import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
+import { Button, Card, CardHeader, CardTitle } from '../../components/ui';
 
 function getDay(d) { return new Date(d).getDate(); }
 function getMon(d) { return new Date(d).toLocaleString('default', { month: 'short' }); }
@@ -28,13 +29,13 @@ export default function Sessions() {
         <StatCard icon={CheckCircle} count={sessions.filter(s => s.status === 'completed').length} label="Completed"     colorClass="green"  />
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title"><Calendar size={18} color="#4f46e5" /> My Sessions</span>
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
+      <Card>
+        <CardHeader>
+          <CardTitle><Calendar size={18} color="#4f46e5" /> My Sessions</CardTitle>
+          <Button variant="primary" size="sm" onClick={() => navigate('/slots')}>
             <Clock size={13} /> Book New Slot
-          </button>
-        </div>
+          </Button>
+        </CardHeader>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-[10px] mb-6 w-fit">
@@ -58,9 +59,9 @@ export default function Sessions() {
               message={tab === 'upcoming' ? 'No upcoming sessions. Book a slot with your mentor!' : 'No past sessions yet.'}
               action={
                 tab === 'upcoming' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/slots')}>
+                  <Button variant="primary" size="sm" onClick={() => navigate('/slots')}>
                     Book a Slot
-                  </button>
+                  </Button>
                 )
               }
             />
@@ -106,16 +107,16 @@ export default function Sessions() {
                     </a>
                   )}
                   {tab === 'completed' && (
-                    <button className="btn btn-outline btn-sm" onClick={() => setFeedbackModal(s)}>
+                    <Button variant="outline" size="sm" onClick={() => setFeedbackModal(s)}>
                       <Star size={13} /> Rate Session
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
             ))
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Feedback modal */}
       {feedbackModal && (
@@ -124,10 +125,10 @@ export default function Sessions() {
           onClose={() => setFeedbackModal(null)}
           footer={
             <>
-              <button className="btn btn-outline" onClick={() => setFeedbackModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => setFeedbackModal(null)}>
+              <Button variant="outline" onClick={() => setFeedbackModal(null)}>Cancel</Button>
+              <Button variant="primary" onClick={() => setFeedbackModal(null)}>
                 <Star size={14} /> Submit Rating
-              </button>
+              </Button>
             </>
           }
         >
