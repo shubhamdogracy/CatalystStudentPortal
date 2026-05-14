@@ -3,6 +3,7 @@ import { Clock, User, CheckCircle, Zap } from 'lucide-react';
 import { availableSlots as initialSlots } from '../../data/mockData';
 import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
+import { Button, Card, CardHeader, CardTitle } from '../../components/ui';
 
 function getDay(d) { return new Date(d).getDate(); }
 function getMon(d) { return new Date(d).toLocaleString('default', { month: 'short' }); }
@@ -37,13 +38,13 @@ export default function Slots() {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title"><Clock size={18} color="#4f46e5" /> Available Slots</span>
+      <Card>
+        <CardHeader>
+          <CardTitle><Clock size={18} color="#4f46e5" /> Available Slots</CardTitle>
           <span className="text-[13px] text-slate-500">
             {availableList.length} slot{availableList.length !== 1 ? 's' : ''} available from your mentor
           </span>
-        </div>
+        </CardHeader>
 
         {/* Info banner */}
         <div className="bg-indigo-600/[0.05] border border-indigo-600/15 rounded-[10px] px-4 py-3 mb-5 text-[13px] text-indigo-600 flex items-center gap-2">
@@ -99,12 +100,9 @@ export default function Slots() {
                   <strong className="text-slate-900">Topic:</strong> {slot.topic}
                 </div>
 
-                <button
-                  className="btn btn-primary w-full justify-center"
-                  onClick={() => setConfirmModal(slot)}
-                >
+                <Button variant="primary" className="w-full justify-center" onClick={() => setConfirmModal(slot)}>
                   <CheckCircle size={14} /> Book This Slot
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -143,7 +141,7 @@ export default function Slots() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Confirm booking modal */}
       {confirmModal && (
@@ -152,10 +150,10 @@ export default function Slots() {
           onClose={() => setConfirmModal(null)}
           footer={
             <>
-              <button className="btn btn-outline" onClick={() => setConfirmModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleBook}>
+              <Button variant="outline" onClick={() => setConfirmModal(null)}>Cancel</Button>
+              <Button variant="primary" onClick={handleBook}>
                 <CheckCircle size={14} /> Confirm Booking
-              </button>
+              </Button>
             </>
           }
         >

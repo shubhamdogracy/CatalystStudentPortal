@@ -4,6 +4,7 @@ import {
   Calendar, Star, CheckCircle, Edit2, Save, X,
 } from 'lucide-react';
 import { authService } from '../../services/api';
+import { Button, Card, CardHeader, CardTitle } from '../../components/ui';
 
 export default function Profile({ student, onUpdateStudent }) {
   const [editing, setEditing] = useState(false);
@@ -111,24 +112,24 @@ export default function Profile({ student, onUpdateStudent }) {
         {/* ── Right column ── */}
         <div className="flex flex-col gap-5">
           {/* Personal info */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title"><User size={18} color="#4f46e5" /> Personal Information</span>
+          <Card>
+            <CardHeader>
+              <CardTitle><User size={18} color="#4f46e5" /> Personal Information</CardTitle>
               {!editing ? (
-                <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>
+                <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                   <Edit2 size={13} /> Edit
-                </button>
+                </Button>
               ) : (
                 <div className="flex gap-2">
-                  <button className="btn btn-outline btn-sm" onClick={handleCancel} disabled={saving}>
+                  <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                     <X size={13} /> Cancel
-                  </button>
-                  <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
                     <Save size={13} /> {saving ? 'Saving...' : 'Save'}
-                  </button>
+                  </Button>
                 </div>
               )}
-            </div>
+            </CardHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white border border-slate-200 rounded-[10px] p-4">
@@ -160,13 +161,13 @@ export default function Profile({ student, onUpdateStudent }) {
                 <div className="text-sm font-semibold text-slate-900">{batchName}</div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Enrollment details */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Enrollment Details</span>
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle><BookOpen size={18} color="#4f46e5" /> Enrollment Details</CardTitle>
+            </CardHeader>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {[
                 { label: 'Enrollment Date',    value: enrollDate },
@@ -195,13 +196,13 @@ export default function Profile({ student, onUpdateStudent }) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Mentor details */}
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentors</span>
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle><Star size={18} color="#4f46e5" /> My Mentors</CardTitle>
+            </CardHeader>
             {allMentors.length === 0 ? (
               <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
             ) : (
@@ -242,7 +243,7 @@ export default function Profile({ student, onUpdateStudent }) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { satService } from '../../services/api';
 import DesmosCalculator from '../Assignments/DesmosCalculator';
 import MathReferencesPanel from '../Assignments/MathReferencesPanel';
 import { C } from '../Assignments/testConstants';
+import { getMasteryLevel, CHART_PALETTE, MASTERY_CHART_COLORS } from '../../utils/colorMapping';
 import {
   SATDivider,
   TestTopBar,
@@ -24,20 +25,6 @@ const TYPE_STYLE    = { mock: 'bg-emerald-100 text-emerald-700', diagnostic: 'bg
 const SERIES_SUFFIX = / — (Math|Reading & Writing)$/;
 const getSeriesName = (name) => name.replace(SERIES_SUFFIX, '').trim();
 
-// ─── Mastery constants ─────────────────────────────────────────────────────────
-function getMasteryLevel(pct) {
-  if (pct >= 85) return { label: 'MASTER',       color: '#2563eb', bg: '#dbeafe', bar: '#10b981' };
-  if (pct >= 70) return { label: 'ELITE',        color: '#0891b2', bg: '#cffafe', bar: '#06b6d4' };
-  if (pct >= 55) return { label: 'EXPERT',       color: '#7c3aed', bg: '#ede9fe', bar: '#8b5cf6' };
-  if (pct >= 40) return { label: 'ADVANCED',     color: '#d97706', bg: '#fef3c7', bar: '#f59e0b' };
-  if (pct >= 25) return { label: 'INTERMEDIATE', color: '#ea580c', bg: '#ffedd5', bar: '#f97316' };
-  return           { label: 'NOVICE',            color: '#ef4444', bg: '#fee2e2', bar: '#ef4444' };
-}
-const CHART_PALETTE = ['#4472C4', '#70AD47', '#ED7D31', '#FF69B4', '#FFC000', '#00B0F0'];
-const MASTERY_CHART_COLORS = {
-  MASTER: '#4472C4', ELITE: '#70AD47', EXPERT: '#ED7D31',
-  ADVANCED: '#FFC000', INTERMEDIATE: '#FF69B4', NOVICE: '#A5A5A5',
-};
 
 // ─── Question data normaliser ──────────────────────────────────────────────────
 function normalizeQuestion(q) {

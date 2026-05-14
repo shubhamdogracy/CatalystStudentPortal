@@ -14,7 +14,12 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
       "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\src\" -Recurse -Depth 3)",
       "Bash(Select-Object FullName)",
-      "Bash(Head -50)"
+      "Bash(Head -50)",
+      "PowerShell(Get-ChildItem -Path . -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 150 | ForEach-Object { if \\($_.PSIsContainer\\) { \"$\\($_.FullName -replace [regex]::Escape\\([System.IO.Directory]::GetCurrentDirectory\\(\\)\\), '.'\\) [DIR]\" } else { \"$\\($_.FullName -replace [regex]::Escape\\([System.IO.Directory]::GetCurrentDirectory\\(\\)\\), '.'\\) [$\\($_.Length\\) bytes]\" } } | Sort-Object)",
+      "Bash(findstr /s /i \"style=\" *.jsx pages\\\\*\\\\*.jsx components\\\\*\\\\*.jsx)",
+      "Bash(xargs wc -l)",
+      "Bash(npx vite *)",
+      "Bash(dir /s /b src)"
     ]
   }
 }
