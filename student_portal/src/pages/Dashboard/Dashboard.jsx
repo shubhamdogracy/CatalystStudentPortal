@@ -286,29 +286,26 @@ export default function Dashboard({ student }) {
       </div>
 
       {/* ── Student Progress ────────────────────────────────────────────────── */}
-      <div className="mb-6">
-        {/* Section header */}
+      <div className="mb-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp size={18} color="#4f46e5" />
             <h2 className="text-[16px] font-extrabold text-slate-800">Student Progress</h2>
           </div>
-          {/* Overall pill */}
           <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-200 px-3.5 py-1.5 rounded-full">
-            <span className="text-[12px] font-semibold text-slate-500">Overall Progress</span>
+            <span className="text-[12px] font-semibold text-slate-500">Overall</span>
             <span className="text-[13px] font-black text-indigo-600">{overallPct}%</span>
           </div>
         </div>
 
-        {/* Cards grid */}
         {loadingTests ? (
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
             {[0, 1, 2].map(i => (
-              <div key={i} className="rounded-[18px] h-44 bg-slate-100 animate-pulse" />
+              <div key={i} className="rounded-[18px] h-36 md:h-44 bg-slate-100 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
             {TEST_CARDS.map(card => (
               <TestCard
                 key={card.key}
@@ -326,108 +323,109 @@ export default function Dashboard({ student }) {
         )}
       </div>
 
-      {/* ── Bottom grid ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-5 mb-5">
-        {/* Mentor card */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor{allMentors.length > 1 ? 's' : ''}</span>
-          </div>
-          {allMentors.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {allMentors.map(({ mentor, batch }, idx) => (
-                <div key={mentor?._id || idx}>
-                  {allMentors.length > 1 && (
-                    <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-2 capitalize">
-                      {batch?.subject} · {batch?.name || '—'}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
-                      {mentor?.name?.split(' ').map((n) => n[0]).join('')}
-                    </div>
-                    <div>
-                      <div className="font-bold text-base text-slate-900 mb-0.5">{mentor?.name}</div>
-                      <div className="text-[13px] text-slate-500 mb-1.5">
-                        {mentor?.specialization || mentor?.specialisation || '—'}
-                        {mentor?.experience ? ` · ${mentor.experience} yrs exp` : ''}
-                      </div>
-                      <span className="inline-flex items-center gap-1.5 bg-indigo-600/[0.08] text-indigo-600 px-2.5 py-1 rounded-full text-xs font-semibold">
-                        <Star size={11} /> Your Mentor
-                      </span>
-                    </div>
+      {/* ── Course Details + My Mentor: stacked on mobile, 2-col on desktop ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+
+      {/* Course Details — appears first on mobile, right column on desktop */}
+      <div className="card md:order-2">
+        <div className="card-header">
+          <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Course Details</span>
+        </div>
+        <div className="flex flex-col">
+          {allMentors.length > 0 ? (
+            allMentors.map(({ batch }, idx) => batch && (
+              <div key={batch._id || idx} className={idx > 0 ? 'mt-3 pt-3 border-t border-slate-100' : ''}>
+                {allMentors.length > 1 && (
+                  <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-1.5 capitalize">
+                    {batch.subject} · {batch.name}
                   </div>
-                  {idx < allMentors.length - 1 && <div className="border-t border-slate-100 mt-1" />}
-                </div>
-              ))}
-              <div className="flex gap-2 mt-1">
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/communication')}>Message</button>
+                )}
+                {[
+                  { label: 'Course',   value: 'SAT' },
+                  { label: 'Batch',    value: batch.name || '—' },
+                  { label: 'Enrolled', value: enrollDate },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
+                    <span className="text-slate-500">{label}</span>
+                    <span className="font-semibold text-slate-900">{value}</span>
+                  </div>
+                ))}
               </div>
-            </div>
+            ))
+          ) : (
+            [{ label: 'Enrolled', value: enrollDate }].map(({ label, value }) => (
+              <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
+                <span className="text-slate-500">{label}</span>
+                <span className="font-semibold text-slate-900">{value}</span>
+              </div>
+            ))
           )}
         </div>
 
-        {/* Course info */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Course Details</span>
-          </div>
-          <div className="flex flex-col">
-            {allMentors.length > 0 ? (
-              allMentors.map(({ batch }, idx) => batch && (
-                <div key={batch._id || idx} className={idx > 0 ? 'mt-3 pt-3 border-t border-slate-100' : ''}>
-                  {allMentors.length > 1 && (
-                    <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-1.5 capitalize">
-                      {batch.subject} · {batch.name}
-                    </div>
-                  )}
-                  {[
-                    { label: 'Course',   value: 'SAT' },
-                    { label: 'Batch',    value: batch.name || '—' },
-                    { label: 'Enrolled', value: enrollDate },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
-                      <span className="text-slate-500">{label}</span>
-                      <span className="font-semibold text-slate-900">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              ))
-            ) : (
-              [{ label: 'Enrolled', value: enrollDate }].map(({ label, value }) => (
-                <div key={label} className="flex justify-between py-2 border-b border-slate-100 last:border-b-0 text-sm">
+        <div className="mt-4 flex items-center gap-4">
+          <OverallRing pct={overallPct} />
+          <div className="flex flex-col gap-2 flex-1">
+            {[
+              { label: 'Diagnostic', pct: diagPct,     color: '#f97316' },
+              { label: 'Practice',   pct: practicePct, color: '#22c55e' },
+              { label: 'Mock',       pct: mockPct,     color: '#8b5cf6' },
+            ].map(({ label, pct: p, color }) => (
+              <div key={label}>
+                <div className="flex justify-between text-[11px] mb-0.5">
                   <span className="text-slate-500">{label}</span>
-                  <span className="font-semibold text-slate-900">{value}</span>
+                  <span className="font-bold" style={{ color }}>{p}%</span>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Overall progress breakdown */}
-          <div className="mt-4 flex items-center gap-4">
-            <OverallRing pct={overallPct} />
-            <div className="flex flex-col gap-2 flex-1">
-              {[
-                { label: 'Diagnostic', pct: diagPct,     color: '#f97316' },
-                { label: 'Practice',   pct: practicePct, color: '#22c55e' },
-                { label: 'Mock',       pct: mockPct,     color: '#8b5cf6' },
-              ].map(({ label, pct: p, color }) => (
-                <div key={label}>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-500">{label}</span>
-                    <span className="font-bold" style={{ color }}>{p}%</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${p}%`, background: color }} />
-                  </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${p}%`, background: color }} />
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* My Mentor — appears second on mobile, left column on desktop */}
+      <div className="card md:order-1">
+        <div className="card-header">
+          <span className="card-title"><Star size={18} color="#4f46e5" /> My Mentor{allMentors.length > 1 ? 's' : ''}</span>
+        </div>
+        {allMentors.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4">No mentor assigned yet.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {allMentors.map(({ mentor, batch }, idx) => (
+              <div key={mentor?._id || idx}>
+                {allMentors.length > 1 && (
+                  <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.5px] mb-2 capitalize">
+                    {batch?.subject} · {batch?.name || '—'}
+                  </div>
+                )}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-500 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
+                    {mentor?.name?.split(' ').map((n) => n[0]).join('')}
+                  </div>
+                  <div>
+                    <div className="font-bold text-base text-slate-900 mb-0.5">{mentor?.name}</div>
+                    <div className="text-[13px] text-slate-500 mb-1.5">
+                      {mentor?.specialization || mentor?.specialisation || '—'}
+                      {mentor?.experience ? ` · ${mentor.experience} yrs exp` : ''}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 bg-indigo-600/[0.08] text-indigo-600 px-2.5 py-1 rounded-full text-xs font-semibold">
+                      <Star size={11} /> Your Mentor
+                    </span>
+                  </div>
+                </div>
+                {idx < allMentors.length - 1 && <div className="border-t border-slate-100 mt-1" />}
+              </div>
+            ))}
+            <div className="flex gap-2 mt-1">
+              <button className="btn btn-primary btn-sm" onClick={() => navigate('/communication')}>Message</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      </div>{/* end 2-col grid */}
     </div>
   );
 }

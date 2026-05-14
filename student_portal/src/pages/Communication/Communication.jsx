@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Send, MoreVertical, Phone, Video, Paperclip, X } from 'lucide-react';
+import { Search, Send, MoreVertical, Phone, Video, Paperclip, X, ArrowLeft } from 'lucide-react';
 import BAvatar from 'boring-avatars';
 import EmojiPicker from 'emoji-picker-react';
 import { chatService } from '../../services/api';
@@ -82,6 +82,7 @@ export default function Communication({ student, onUnreadChange }) {
   const [onlineUsers, setOnlineUsers]     = useState(new Set());
   const [showEmoji, setShowEmoji]         = useState(false);
   const [attachedFile, setAttachedFile]   = useState(null);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   const messagesEndRef = useRef(null);
   const socketRef      = useRef(null);
@@ -261,6 +262,7 @@ export default function Communication({ student, onUnreadChange }) {
     setSelected(contact);
     setSearch('');
     setSearchResults([]);
+    setMobileShowChat(true);
   };
 
   const contactList = search
@@ -286,10 +288,11 @@ export default function Communication({ student, onUnreadChange }) {
 
   return (
     <div className="page-content pb-0">
-      <div className="flex h-[calc(100vh-120px)] bg-white rounded-[14px] border border-slate-200 overflow-hidden">
+      <div className="flex h-[calc(100vh-184px)] md:h-[calc(100vh-120px)] bg-white rounded-[14px] border border-slate-200 overflow-hidden">
 
         {/* ── Contact list ── */}
-        <div className="w-[280px] border-r border-slate-200 flex flex-col flex-shrink-0">
+        <div className={`border-r border-slate-200 flex-col flex-shrink-0 w-full md:w-[280px]
+          ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
           <div className="px-4 py-[18px] border-b border-slate-200">
             <h3 className="text-[15px] font-bold text-slate-900 mb-2.5">Messages</h3>
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-[7px]">
@@ -351,9 +354,16 @@ export default function Communication({ student, onUnreadChange }) {
 
         {/* ── Chat window ── */}
         {selected ? (
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className={`flex-1 flex-col min-w-0 ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
             {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-3 flex-shrink-0">
+            <div className="px-3 md:px-5 py-4 border-b border-slate-200 flex items-center gap-3 flex-shrink-0">
+              {/* Back button — mobile only */}
+              <button
+                className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 flex-shrink-0"
+                onClick={() => setMobileShowChat(false)}
+              >
+                <ArrowLeft size={18} />
+              </button>
               <div className="relative flex-shrink-0">
                 <div className="w-10 h-10 rounded-full overflow-hidden">
                   <BAvatar size={40} name={selected.name || 'User'} variant="beam" />
@@ -503,7 +513,7 @@ export default function Communication({ student, onUnreadChange }) {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2.5 bg-[#f0f2f5]">
+          <div className="flex-1 hidden md:flex flex-col items-center justify-center text-slate-500 gap-2.5 bg-[#f0f2f5]">
             <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
               <Search size={28} />
             </div>

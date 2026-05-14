@@ -11,7 +11,10 @@
       "PowerShell(dir \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\" -Recurse | Where-Object { $_.Extension -eq \".jsx\" -or $_.Extension -eq \".js\" } | Select-Object FullName)",
       "PowerShell(cmd /c \"dir /s /b C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\")",
       "PowerShell(head *)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
+      "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\src\" -Recurse -Depth 3)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -50)"
     ]
   }
 }
