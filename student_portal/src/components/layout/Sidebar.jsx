@@ -28,10 +28,10 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Learning',
+    label: 'SAT Tests',
     items: [
       {
-        id: 'structuredTests', label: 'SAT Tests', shortLabel: 'Tests',
+        id: 'structuredTests', label: 'Structured Tests', shortLabel: 'Tests',
         icon: GraduationCap, iconColor: '#7c3aed', iconBg: '#ede9fe',
         subItems: [
           { id: 'satDiagnostic', label: 'Diagnostic', icon: ClipboardList, path: '/sat/diagnostic', iconColor: '#0d9488', iconBg: '#f0fdfa' },
