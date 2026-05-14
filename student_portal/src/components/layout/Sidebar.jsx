@@ -34,9 +34,9 @@ const NAV_GROUPS = [
         id: 'structuredTests', label: 'Structured Tests', shortLabel: 'Tests',
         icon: GraduationCap, iconColor: '#7c3aed', iconBg: '#ede9fe',
         subItems: [
-          { id: 'satDiagnostic', label: 'Diagnostic', icon: ClipboardList, path: '/sat/diagnostic', iconColor: '#0d9488', iconBg: '#f0fdfa' },
-          { id: 'satPractice',   label: 'Practice',   icon: BookOpenCheck,  path: '/sat/practice',   iconColor: '#16a34a', iconBg: '#f0fdf4' },
-          { id: 'satMock',       label: 'Mock Tests', icon: BarChart2,      path: '/sat/mock',       iconColor: '#d97706', iconBg: '#fffbeb' },
+          { id: 'satDiagnostic', label: 'Diagnostic Tests',  icon: ClipboardList, path: '/sat/diagnostic', iconColor: '#0d9488', iconBg: '#f0fdfa' },
+          { id: 'satPractice',   label: 'Practice Tests',   icon: BookOpenCheck,  path: '/sat/practice',   iconColor: '#16a34a', iconBg: '#f0fdf4' },
+          { id: 'satMock',       label: 'Mock Tests',  icon: BarChart2,      path: '/sat/mock',       iconColor: '#d97706', iconBg: '#fffbeb' },
         ],
       },
     ],
