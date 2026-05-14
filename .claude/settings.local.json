@@ -19,7 +19,10 @@
       "Bash(findstr /s /i \"style=\" *.jsx pages\\\\*\\\\*.jsx components\\\\*\\\\*.jsx)",
       "Bash(xargs wc -l)",
       "Bash(npx vite *)",
-      "Bash(dir /s /b src)"
+      "Bash(dir /s /b src)",
+      "PowerShell(\\(Get-Content \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\\\\pages\\\\SATTests\\\\SATTests.jsx\" | Measure-Object -Line\\).Lines)",
+      "Bash(Get-ChildItem -Recurse -Name)",
+      "Bash(Select-Object -First 100)"
     ]
   }
 }
