@@ -1633,7 +1633,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
           <p className="text-sm text-slate-400">Check back once your operations team adds tests.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {groupsToShow.map(g => {
             const isDiag    = g.type === 'diagnostic';
             const typeBadge = isDiag ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700';
@@ -1649,52 +1649,47 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
             const latestMath = isDone ? latest(mathSessions) : null;
             const isLoadingThis = modalLoading === g.seriesName;
 
-            // Guest lock: accessible if ALL present configs are demo-accessible (mirrors admin logic)
             const presentCfgs = [g.rw, g.math].filter(Boolean);
             const isGuestLocked = isGuest && !(presentCfgs.length > 0 && presentCfgs.every(c => c.is_demo_accessible));
 
             return (
               <div key={g.seriesName}
-                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-4 ${
+                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${
                   isGuestLocked
                     ? 'border-slate-200 opacity-75'
                     : isDone
                       ? 'border-green-200 hover:border-green-300 hover:shadow-md'
                       : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'
                 }`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-900">{g.seriesName}</p>
+                      <p className="text-sm font-bold text-slate-900 leading-snug">{g.seriesName}</p>
                       {isGuestLocked && <span className="text-base">🔒</span>}
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeBadge}`}>{typeLabel}</span>
-                      <span className="text-[10px] text-slate-400">4 modules · 2 R&amp;W + 2 Math · Adaptive</span>
                       {!isGuestLocked && isGuest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
                     </div>
                   </div>
                   {isDone && !isGuestLocked && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`border rounded-xl p-3 ${isGuestLocked ? 'bg-slate-50 border-slate-100' : 'bg-blue-50 border-blue-100'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isGuestLocked ? 'text-slate-400' : 'text-blue-700'}`}>Reading &amp; Writing</p>
-                    {g.rw
-                      ? <p className="text-xs text-slate-500">{g.rw.module_1?.total_questions}Q / module · {g.rw.module_1?.time_limit_minutes}min · 2 modules</p>
-                      : <p className="text-xs text-slate-400 italic">Not configured</p>}
-                    {!isGuestLocked && latestRw?.total_score != null && (
-                      <p className="text-sm font-bold text-blue-800 mt-1">{latestRw.total_score}/{(latestRw.module_1?.max_score || 0) + (latestRw.module_2?.max_score || 0)} correct</p>
-                    )}
+                <div className="bg-slate-50 rounded-xl p-3 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="text-slate-400 w-14">R&amp;W</span>
+                    <span className="font-medium text-slate-700">
+                      {g.rw ? `${g.rw.module_1?.total_questions}Q / module · ${g.rw.module_1?.time_limit_minutes}min` : 'Not configured'}
+                    </span>
                   </div>
-                  <div className={`border rounded-xl p-3 ${isGuestLocked ? 'bg-slate-50 border-slate-100' : 'bg-purple-50 border-purple-100'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isGuestLocked ? 'text-slate-400' : 'text-purple-700'}`}>Math</p>
-                    {g.math
-                      ? <p className="text-xs text-slate-500">{g.math.module_1?.total_questions}Q / module · {g.math.module_1?.time_limit_minutes}min · 2 modules</p>
-                      : <p className="text-xs text-slate-400 italic">Not configured</p>}
-                    {!isGuestLocked && latestMath?.total_score != null && (
-                      <p className="text-sm font-bold text-purple-800 mt-1">{latestMath.total_score}/{(latestMath.module_1?.max_score || 0) + (latestMath.module_2?.max_score || 0)} correct</p>
-                    )}
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="text-slate-400 w-14">Math</span>
+                    <span className="font-medium text-slate-700">
+                      {g.math ? `${g.math.module_1?.total_questions}Q / module · ${g.math.module_1?.time_limit_minutes}min` : 'Not configured'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-[11px] text-slate-500">
+                    <span>4 modules</span><span>·</span><span>Adaptive</span>
                   </div>
                 </div>
 
@@ -1725,56 +1720,59 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
             );
           })}
 
-          {flatsToShow.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {flatsToShow.map(cfg => {
-                const flatDone = getConfigSessions(sessions, cfg._id).length > 0;
-                const isFlatGuestLocked = isGuest && !cfg.is_demo_accessible;
-                return (
-                <div key={cfg._id}
-                  className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${
-                    isFlatGuestLocked
-                      ? 'border-slate-200 opacity-75'
-                      : flatDone
-                        ? 'border-green-200'
-                        : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'
-                  }`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
-                        {isFlatGuestLocked && <span className="text-base">🔒</span>}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLE[cfg.type] || 'bg-gray-100 text-gray-600'}`}>{cfg.type}</span>
-                        {!isFlatGuestLocked && isGuest && cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
-                      </div>
+          {flatsToShow.map(cfg => {
+            const flatDone = getConfigSessions(sessions, cfg._id).length > 0;
+            const isFlatGuestLocked = isGuest && !cfg.is_demo_accessible;
+            return (
+              <div key={cfg._id}
+                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${
+                  isFlatGuestLocked
+                    ? 'border-slate-200 opacity-75'
+                    : flatDone
+                      ? 'border-green-200 hover:border-green-300 hover:shadow-md'
+                      : 'border-slate-200 hover:border-indigo-200 hover:shadow-md'
+                }`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                      {isFlatGuestLocked && <span className="text-base">🔒</span>}
                     </div>
-                    {flatDone && !isFlatGuestLocked && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLE[cfg.type] || 'bg-gray-100 text-gray-600'}`}>{cfg.type}</span>
+                      {!isFlatGuestLocked && isGuest && cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
+                    </div>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-4 text-xs text-slate-500">
-                    <span>{cfg.module_1?.total_questions}Q / module</span><span>·</span>
-                    <span>{cfg.module_1?.time_limit_minutes}min / module</span><span>·</span><span>2 modules</span>
-                  </div>
-                  {isFlatGuestLocked ? (
-                    <button
-                      onClick={() => setShowUnlock(true)}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
-                      🔒 Unlock to Access
-                    </button>
-                  ) : !flatDone && (
-                    <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
-                      style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                      Start Test →
-                    </button>
-                  )}
+                  {flatDone && !isFlatGuestLocked && <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Completed</span>}
                 </div>
-                );
-              })}
-            </div>
-          )}
+                <div className="bg-slate-50 rounded-xl p-3 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="text-slate-400 w-14">Modules</span>
+                    <span className="font-medium text-slate-700">2 · Adaptive</span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-[11px] text-slate-500">
+                    <span>{cfg.module_1?.total_questions}Q / module</span><span>·</span>
+                    <span>{cfg.module_1?.time_limit_minutes}min / module</span>
+                  </div>
+                </div>
+                {isFlatGuestLocked ? (
+                  <button
+                    onClick={() => setShowUnlock(true)}
+                    className="w-full py-3 rounded-xl text-sm font-extrabold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-[0_4px_20px_rgba(245,158,11,0.45)] active:scale-[0.98]"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}>
+                    🔓 Unlock to Access
+                  </button>
+                ) : !flatDone && (
+                  <button onClick={() => onStart({ type: 'adaptive', config: cfg })}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    Start Test →
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
