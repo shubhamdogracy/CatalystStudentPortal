@@ -63,7 +63,7 @@ export default function Profile({ student, onUpdateStudent }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[300px_1fr] gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-5">
         {/* ── Left column ── */}
         <div>
           <div className="bg-white rounded-[14px] border border-slate-200 px-6 py-7 text-center">
@@ -130,7 +130,7 @@ export default function Profile({ student, onUpdateStudent }) {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white border border-slate-200 rounded-[10px] p-4">
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.5px] mb-1.5">Full Name</div>
                 {editing ? (
@@ -167,7 +167,7 @@ export default function Profile({ student, onUpdateStudent }) {
             <div className="card-header">
               <span className="card-title"><BookOpen size={18} color="#4f46e5" /> Enrollment Details</span>
             </div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {[
                 { label: 'Enrollment Date',    value: enrollDate },
                 { label: 'Total Sessions',     value: String(student?.totalSessions ?? '—') },
@@ -224,7 +224,7 @@ export default function Profile({ student, onUpdateStudent }) {
                         <div className="text-[13px] text-slate-500">{mentor?.specialization || mentor?.specialisation || '—'}</div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
                         { label: 'Specialisation', value: mentor?.specialization || mentor?.specialisation || '—' },
                         { label: 'Experience',     value: mentor?.experience ? `${mentor.experience} yrs` : '—' },
