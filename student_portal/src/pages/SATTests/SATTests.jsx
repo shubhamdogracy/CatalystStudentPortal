@@ -12,6 +12,10 @@ import MathReferencesPanel from '../Assignments/MathReferencesPanel';
 import { C } from '../Assignments/testConstants';
 import { getMasteryLevel, CHART_PALETTE, MASTERY_CHART_COLORS } from '../../utils/colorMapping';
 import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, Cell, AreaChart, Area, PieChart, Pie, ReferenceLine,
+} from 'recharts';
+import {
   SATDivider,
   TestTopBar,
   TestBottomBar,
@@ -19,6 +23,7 @@ import {
   NotesModal,
   QuestionPicker,
 } from '../Assignments/TestSharedComponents';
+import ProjectedSATScore from './ProjectedSATScore';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const SUBJ_LABEL    = { math: 'Math', reading_writing: 'Reading & Writing' };
@@ -319,111 +324,111 @@ function generateSATAISummary(topicMastery, totalPct, passed) {
   return { overallMsg, strengthMsg, improveMsg, devMsg, nextMsg, strong, needsPractice, developing, allTopics, overall: totalPct, passed };
 }
 
-// ─── SAT SVG Charts ────────────────────────────────────────────────────────────
-function SVGColumnChart({ data }) {
-  const padL = 36, padR = 12, padT = 28, padB = 56;
-  const n    = data.length || 1;
-  const svgW = Math.max(300, n * 72 + padL + padR);
-  const svgH = 210;
-  const chartW = svgW - padL - padR;
-  const chartH = svgH - padT - padB;
-  const barW   = Math.min(48, (chartW / n) * 0.55);
-  const gap    = chartW / n;
+// ─── SAT Charts (Recharts) ─────────────────────────────────────────────────────
+
+const SCORE_COLOR  = pct => pct >= 70 ? '#10b981' : pct >= 45 ? '#f59e0b' : '#ef4444';
+const SECTION_COLORS = {
+  'R&W Module 1':  '#4f46e5',
+  'R&W Module 2':  '#818cf8',
+  'Math Module 1': '#7c3aed',
+  'Math Module 2': '#a78bfa',
+};
+
+// ── Shared chart pieces ──────────────────────────────────────────────────────────
+function ChartCard({ title, subtitle, children }) {
   return (
-    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full">
-      {[0, 25, 50, 75, 100].map(v => {
-        const y = padT + (1 - v / 100) * chartH;
-        return (
-          <g key={v}>
-            <line x1={padL} y1={y} x2={svgW - padR} y2={y} stroke="#f1f5f9" strokeWidth={v === 0 ? 1.5 : 1} />
-            <text x={padL - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8">{v}%</text>
-          </g>
-        );
-      })}
-      {data.map((d, i) => {
-        const barH   = Math.max(2, (d.pct / 100) * chartH);
-        const x      = padL + gap * i + (gap - barW) / 2;
-        const y      = padT + chartH - barH;
-        const color  = CHART_PALETTE[d.paletteIdx % CHART_PALETTE.length];
-        const labelX = x + barW / 2;
-        const nameY  = svgH - padB + 14;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={barW} height={barH} rx="4" fill={color} />
-            <text x={labelX} y={y - 4} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#64748b">{d.pct}%</text>
-            {n > 5 ? (
-              <text x={labelX} y={nameY} textAnchor="end" fontSize="9" fill="#64748b"
-                transform={`rotate(-38, ${labelX}, ${nameY})`}>{d.name}</text>
-            ) : (
-              <text x={labelX} y={nameY} textAnchor="middle" fontSize="9" fill="#64748b">{d.name}</text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100"
+           style={{ background: 'linear-gradient(90deg, #1e293b 0%, #334155 100%)' }}>
+        <p className="text-sm font-extrabold text-white">{title}</p>
+        {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
   );
 }
 
-function SVGFullPie({ pieData, size = 220 }) {
-  const cx = size / 2, cy = size / 2, r = size * 0.42;
-  const total = pieData.reduce((a, s) => a + s.value, 0) || 1;
-  const slices = pieData.reduce((acc, seg) => {
-    const sa = acc.angle;
-    const sl = (seg.value / total) * 2 * Math.PI;
-    const ea = sa + sl;
-    const x1 = cx + r * Math.cos(sa), y1 = cy + r * Math.sin(sa);
-    const x2 = cx + r * Math.cos(ea), y2 = cy + r * Math.sin(ea);
-    const la  = sl > Math.PI ? 1 : 0;
-    const midA = (sa + ea) / 2;
-    acc.items.push({
-      ...seg,
-      pct:  Math.round((seg.value / total) * 100),
-      path: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${la} 1 ${x2} ${y2} Z`,
-      lx:   cx + r * 0.68 * Math.cos(midA),
-      ly:   cy + r * 0.68 * Math.sin(midA),
-    });
-    acc.angle = ea;
-    return acc;
-  }, { angle: -Math.PI / 2, items: [] }).items;
-
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      {slices.map((s, i) => (
-        <g key={i}>
-          <path d={s.path} fill={s.color} stroke="#fff" strokeWidth="2" />
-          {s.pct >= 8 && (
-            <text x={s.lx} y={s.ly + 4} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#fff">
-              {s.pct}%
-            </text>
-          )}
-        </g>
+    <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-3 min-w-[140px]">
+      {label && <p className="text-[12px] font-extrabold text-gray-800 mb-2 border-b border-gray-100 pb-1.5">{label}</p>}
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-2 text-[11px] mt-1">
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                style={{ background: p.color || p.fill }} />
+          <span className="text-gray-500">{p.name}:</span>
+          <span className="font-extrabold text-gray-800 ml-auto pl-2">{p.value}{p.unit || ''}</span>
+        </div>
       ))}
-    </svg>
+    </div>
   );
 }
 
+const axisStyle   = { fontSize: 11, fill: '#94a3b8' };
+const labelStyle  = { fontSize: 12, fill: '#64748b' };
+const gridProps   = { strokeDasharray: '3 3', stroke: '#f1f5f9' };
+
+// ── Main charts component ────────────────────────────────────────────────────────
 function SATTopicCharts({ topicMastery }) {
   const groupEntries = Object.entries(topicMastery);
+
   if (groupEntries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400 text-sm">
         <span className="text-4xl mb-3">📊</span>
         <p className="font-semibold">No topic data available.</p>
-        <p className="text-xs mt-1">Questions need topics assigned to enable charts.</p>
+        <p className="text-xs mt-1">Assign topics to questions to enable charts.</p>
       </div>
     );
   }
 
-  const columnGroups = groupEntries.map(([group, topics]) => ({
+  // ── Data preparation ──────────────────────────────────────────────────────────
+
+  // Section overview: one bar per module showing overall score%
+  const sectionOverview = groupEntries.map(([group, topics]) => {
+    const correct = Object.values(topics).reduce((s, d) => s + d.correct, 0);
+    const total   = Object.values(topics).reduce((s, d) => s + d.total,   0);
+    const score   = total > 0 ? Math.round((correct / total) * 100) : 0;
+    return {
+      name:     group.replace(' Module ', ' M'),
+      fullName: group,
+      correct,  total,  score,
+      color:    SECTION_COLORS[group] || '#6366f1',
+    };
+  });
+
+  // Per-section topic bars (score % per topic, sorted desc)
+  const topicBarGroups = groupEntries.map(([group, topics]) => ({
     group,
-    data: Object.entries(topics).map(([topic, d], idx) => ({
-      name:       topic.length > 18 ? topic.slice(0, 16) + '…' : topic,
-      fullName:   topic,
-      pct:        d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0,
-      paletteIdx: idx,
-    })),
+    data: Object.entries(topics)
+      .map(([name, d]) => ({
+        name:     name.length > 16 ? name.slice(0, 14) + '…' : name,
+        fullName: name,
+        score:    d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0,
+        correct:  d.correct,
+        wrong:    d.total - d.correct,
+        total:    d.total,
+      }))
+      .sort((a, b) => b.score - a.score),
   }));
 
+  // All-topics stacked correct/wrong (sorted by score desc)
+  const stackedData = groupEntries
+    .flatMap(([group, topics]) =>
+      Object.entries(topics).map(([name, d]) => ({
+        name:     name.length > 16 ? name.slice(0, 14) + '…' : name,
+        fullName: name,
+        group,
+        correct:  d.correct,
+        wrong:    d.total - d.correct,
+        total:    d.total,
+        score:    d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0,
+      }))
+    )
+    .sort((a, b) => b.score - a.score);
+
+  // Mastery distribution for donut pie
   const masteryCount = {};
   for (const topics of Object.values(topicMastery)) {
     for (const [, d] of Object.entries(topics)) {
@@ -432,56 +437,219 @@ function SATTopicCharts({ topicMastery }) {
       masteryCount[label] = (masteryCount[label] || 0) + 1;
     }
   }
-  const pieData = Object.entries(masteryCount).map(([name, value]) => ({
-    name, value, color: MASTERY_CHART_COLORS[name] || '#A5A5A5',
-  }));
+  const pieData = Object.entries(masteryCount)
+    .map(([name, value]) => ({ name, value, color: MASTERY_CHART_COLORS[name] || '#A5A5A5' }))
+    .sort((a, b) => b.value - a.value);
+  const totalTopics = pieData.reduce((s, e) => s + e.value, 0);
 
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 space-y-6">
-      {columnGroups.map(({ group, data }) => (
-        <div key={group} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100"
-            style={{ background: 'linear-gradient(90deg,#1e293b,#334155)' }}>
-            <p className="text-sm font-bold text-white">{group}</p>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 bg-white/10 px-2 py-0.5 rounded-full">Column Chart</span>
-          </div>
-          <div className="px-4 pt-4 pb-3">
-            <SVGColumnChart data={data} />
-            <div className="flex flex-wrap gap-2 mt-2 justify-center">
-              {data.map((d, idx) => (
-                <div key={d.fullName} className="flex items-center gap-1.5 text-[11px]">
-                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: CHART_PALETTE[idx % CHART_PALETTE.length] }} />
-                  <span className="text-gray-600">{d.fullName}</span>
-                </div>
+    <div className="p-5 space-y-6 max-w-3xl mx-auto pb-10">
+
+      {/* ── 1. Section Overview Bar Chart ─────────────────────────────────── */}
+      <ChartCard
+        title="Section Performance Overview"
+        subtitle="Overall score % across all four modules — dashed line marks the 60% threshold"
+      >
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={sectionOverview} margin={{ top: 14, right: 16, left: -8, bottom: 4 }}
+                    barCategoryGap="40%">
+            <CartesianGrid {...gridProps} vertical={false} />
+            <XAxis dataKey="name" tick={labelStyle} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} tick={axisStyle} axisLine={false} tickLine={false}
+                   tickFormatter={v => `${v}%`} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc', radius: 6 }} />
+            <ReferenceLine y={60} stroke="#cbd5e1" strokeDasharray="5 3"
+                           label={{ value: '60% threshold', position: 'insideTopRight', fontSize: 10, fill: '#94a3b8' }} />
+            <Bar dataKey="score" name="Score" unit="%" radius={[8, 8, 0, 0]}
+                 label={{ position: 'top', fontSize: 11, fill: '#64748b', formatter: v => `${v}%` }}>
+              {sectionOverview.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
               ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex flex-wrap gap-3 mt-1 justify-center">
+          {sectionOverview.map(s => (
+            <div key={s.fullName} className="flex items-center gap-1.5 text-[11px]">
+              <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: s.color }} />
+              <span className="text-gray-500">{s.fullName}:</span>
+              <span className="font-extrabold text-gray-700">{s.correct}/{s.total} correct</span>
             </div>
-          </div>
+          ))}
         </div>
+      </ChartCard>
+
+      {/* ── 2. Performance Trajectory Area Chart ──────────────────────────── */}
+      <ChartCard
+        title="Performance Trajectory"
+        subtitle="Score % per module in test order — shows momentum shift across the diagnostic"
+      >
+        <ResponsiveContainer width="100%" height={230}>
+          <AreaChart data={sectionOverview} margin={{ top: 14, right: 16, left: -8, bottom: 4 }}>
+            <defs>
+              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="10%"  stopColor="#6366f1" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps} vertical={false} />
+            <XAxis dataKey="name" tick={labelStyle} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} tick={axisStyle} axisLine={false} tickLine={false}
+                   tickFormatter={v => `${v}%`} />
+            <Tooltip content={({ active, payload, _label }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-3 text-[12px]">
+                  <p className="font-extrabold text-gray-800 mb-1.5">{d.fullName}</p>
+                  <p className="text-gray-500">Score: <strong style={{ color: SCORE_COLOR(d.score) }}>{d.score}%</strong></p>
+                  <p className="text-gray-500">Correct: <strong className="text-emerald-600">{d.correct}/{d.total}</strong></p>
+                </div>
+              );
+            }} />
+            <ReferenceLine y={60} stroke="#cbd5e1" strokeDasharray="5 3" />
+            <Area type="monotone" dataKey="score" name="Score" unit="%"
+                  stroke="#6366f1" strokeWidth={2.5} fill="url(#areaFill)"
+                  dot={{ fill: '#6366f1', r: 5, stroke: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 7, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      {/* ── 3. Per-section topic score bar charts ─────────────────────────── */}
+      {topicBarGroups.map(({ group, data }) => (
+        <ChartCard key={group}
+          title={`${group} — Topic Scores`}
+          subtitle="Score % per topic, colour-coded green ≥70 / amber ≥45 / red <45 · dashed line at 60%"
+        >
+          <ResponsiveContainer width="100%" height={Math.max(200, data.length * 48)}>
+            <BarChart data={data} layout="vertical"
+                      margin={{ top: 4, right: 56, left: 8, bottom: 4 }}>
+              <CartesianGrid {...gridProps} horizontal={false} />
+              <XAxis type="number" domain={[0, 100]} tick={axisStyle}
+                     axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+              <YAxis type="category" dataKey="name" width={120}
+                     tick={labelStyle} axisLine={false} tickLine={false} />
+              <Tooltip content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-3 text-[12px]">
+                    <p className="font-extrabold text-gray-800 mb-1.5">{d.fullName}</p>
+                    <p className="text-gray-500">Score: <strong style={{ color: SCORE_COLOR(d.score) }}>{d.score}%</strong></p>
+                    <p className="text-gray-500">Correct: <strong className="text-emerald-600">{d.correct}</strong> / {d.total}</p>
+                    <p className="text-gray-500">Wrong: <strong className="text-red-500">{d.wrong}</strong></p>
+                  </div>
+                );
+              }} />
+              <ReferenceLine x={60} stroke="#cbd5e1" strokeDasharray="5 3" />
+              <Bar dataKey="score" name="Score" unit="%" radius={[0, 6, 6, 0]}
+                   label={{ position: 'right', fontSize: 11, fill: '#64748b', formatter: v => `${v}%` }}>
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={SCORE_COLOR(entry.score)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
       ))}
 
-      {pieData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100"
-            style={{ background: 'linear-gradient(90deg,#1e293b,#334155)' }}>
-            <p className="text-sm font-bold text-white">Mastery Level Distribution</p>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 bg-white/10 px-2 py-0.5 rounded-full">Pie Chart</span>
-          </div>
-          <div className="p-4 flex flex-col sm:flex-row items-center gap-8">
-            <SVGFullPie pieData={pieData} size={200} />
-            <div className="flex flex-col gap-3">
-              {pieData.map(entry => (
-                <div key={entry.name} className="flex items-center gap-2.5">
-                  <span className="w-4 h-4 rounded shrink-0" style={{ background: entry.color }} />
-                  <div>
-                    <p className="text-[13px] font-bold text-gray-800">{entry.name}</p>
-                    <p className="text-[11px] text-gray-400">{entry.value} topic{entry.value !== 1 ? 's' : ''}</p>
+      {/* ── 4. Correct vs Wrong stacked bar ───────────────────────────────── */}
+      <ChartCard
+        title="Correct vs Incorrect — All Topics"
+        subtitle="Stacked bar showing actual question counts · hover for full topic name and section"
+      >
+        <ResponsiveContainer width="100%" height={Math.max(220, stackedData.length * 30)}>
+          <BarChart data={stackedData} layout="vertical"
+                    margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <CartesianGrid {...gridProps} horizontal={false} />
+            <XAxis type="number" tick={axisStyle} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="name" width={120}
+                   tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <Tooltip content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-3 text-[12px]">
+                  <p className="font-extrabold text-gray-800 mb-1.5">{d.fullName}</p>
+                  <p className="text-gray-400 text-[11px] mb-1.5">{d.group}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+                    <span className="text-gray-500">Correct: <strong className="text-emerald-600">{d.correct}</strong></span>
                   </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-400" />
+                    <span className="text-gray-500">Wrong: <strong className="text-red-500">{d.wrong}</strong></span>
+                  </div>
+                  <p className="text-gray-500 mt-1.5 pt-1.5 border-t border-gray-100">
+                    Score: <strong style={{ color: SCORE_COLOR(d.score) }}>{d.score}%</strong>
+                  </p>
                 </div>
-              ))}
+              );
+            }} />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            <Bar dataKey="correct" name="Correct" stackId="s" fill="#10b981" />
+            <Bar dataKey="wrong"   name="Wrong"   stackId="s" fill="#f87171" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      {/* ── 5. Mastery distribution donut + legend bars ───────────────────── */}
+      {pieData.length > 0 && (
+        <ChartCard
+          title="Mastery Level Distribution"
+          subtitle="How your topics are spread across mastery tiers"
+        >
+          <div className="flex flex-col sm:flex-row items-center gap-8">
+            {/* Donut */}
+            <div className="shrink-0" style={{ width: 220, height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%"
+                       innerRadius={58} outerRadius={92}
+                       paddingAngle={3} dataKey="value"
+                       label={({ percent }) => `${Math.round(percent * 100)}%`}
+                       labelLine={false}>
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v, name) => [`${v} topic${v !== 1 ? 's' : ''}`, name]}
+                    contentStyle={{ borderRadius: 12, border: '1px solid #f1f5f9', fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend with mini progress bars */}
+            <div className="flex flex-col gap-3.5 flex-1 w-full">
+              {pieData.map(entry => {
+                const pct = Math.round((entry.value / totalTopics) * 100);
+                return (
+                  <div key={entry.name}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: entry.color }} />
+                        <span className="text-[13px] font-semibold text-gray-700">{entry.name}</span>
+                      </div>
+                      <span className="text-[11px] font-extrabold tabular-nums" style={{ color: entry.color }}>
+                        {entry.value} topic{entry.value !== 1 ? 's' : ''} &nbsp;·&nbsp; {pct}%
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                           style={{ width: `${pct}%`, background: entry.color }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        </ChartCard>
       )}
+
     </div>
   );
 }
@@ -655,17 +823,17 @@ ${Object.keys(topicMastery).length > 0 ? `
   URL.revokeObjectURL(url);
 }
 
-// ─── SAT Full Test Results Modal ───────────────────────────────────────────────
+// ─── SAT Full Test Results — full-screen gamified layout ───────────────────────
 function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
-  const [view,         setView]         = useState('questions');
+  const [view,         setView]         = useState('sat_score');
   const [activeModule, setActiveModule] = useState('rw_m1');
 
-  const rwScore    = (rwM1?.score   || 0) + (rwM2?.score   || 0);
+  const rwScore    = (rwM1?.score    || 0) + (rwM2?.score    || 0);
   const rwMax      = (rwM1?.max_score || 0) + (rwM2?.max_score || 0);
   const mathScore  = (mathM1?.score  || 0) + (mathM2?.score  || 0);
   const mathMax    = (mathM1?.max_score || 0) + (mathM2?.max_score || 0);
   const totalScore = rwScore + mathScore;
-  const totalMax   = rwMax + mathMax;
+  const totalMax   = rwMax   + mathMax;
   const totalPct   = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
   const passed     = totalPct >= 60;
 
@@ -674,117 +842,142 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
     [rwM1, rwM2, mathM1, mathM2],
   );
   const hasTopics = Object.keys(topicMastery).length > 0;
-  const aiData = useMemo(
+  const aiData    = useMemo(
     () => hasTopics ? generateSATAISummary(topicMastery, totalPct, passed) : null,
     [topicMastery, totalPct, passed, hasTopics],
   );
 
   const modules = [
-    { key: 'rw_m1',   label: 'R&W Module 1',  data: rwM1,   color: '#4f46e5', bg: '#eef2ff' },
-    { key: 'rw_m2',   label: 'R&W Module 2',  data: rwM2,   color: '#4f46e5', bg: '#eef2ff' },
-    { key: 'math_m1', label: 'Math Module 1', data: mathM1, color: '#7c3aed', bg: '#f5f3ff' },
-    { key: 'math_m2', label: 'Math Module 2', data: mathM2, color: '#7c3aed', bg: '#f5f3ff' },
+    { key: 'rw_m1',   label: 'R&W Module 1',  data: rwM1,   color: '#4f46e5' },
+    { key: 'rw_m2',   label: 'R&W Module 2',  data: rwM2,   color: '#4f46e5' },
+    { key: 'math_m1', label: 'Math Module 1', data: mathM1, color: '#7c3aed' },
+    { key: 'math_m2', label: 'Math Module 2', data: mathM2, color: '#7c3aed' },
   ];
   const activeModData = modules.find(m => m.key === activeModule);
 
   const TABS = [
-    { key: 'questions', label: 'Questions' },
-    ...(hasTopics ? [{ key: 'topics',  label: 'Topic Mastery' }] : []),
-    ...(hasTopics ? [{ key: 'charts',  label: 'Charts'        }] : []),
-    { key: 'summary', label: 'AI Summary' },
+    { key: 'sat_score', label: '🎯 SAT Score'    },
+    { key: 'questions', label: '📝 Questions'     },
+    ...(hasTopics ? [{ key: 'topics',  label: '📊 Topic Mastery' }] : []),
+    ...(hasTopics ? [{ key: 'charts',  label: '📈 Charts'        }] : []),
+    { key: 'summary',   label: '🤖 AI Summary'   },
   ];
 
   const handleDownload = () => downloadSATReport(seriesName, totalPct, passed, topicMastery, aiData, totalScore, totalMax);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1100] p-4">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
-        style={{ boxShadow: '0 25px 80px rgba(0,0,0,0.3)' }}>
+    <div className="fixed inset-0 z-[1100] flex flex-col overflow-hidden" style={{ background: '#f1f5f9' }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0"
-          style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }}>
+      {/* ── Gamified Header ──────────────────────────────────────────────── */}
+      <div className="shrink-0"
+           style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%)' }}>
+
+        {/* Top row: identity + actions */}
+        <div className="flex items-center justify-between px-6 pt-4 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: 'rgba(255,255,255,0.2)' }}>
-              📝
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-lg"
+                 style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
+              📋
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-white">{seriesName}</h3>
-              <p className="text-xs text-indigo-300 mt-0.5">Full SAT Score Report</p>
+              <h2 className="text-sm font-extrabold text-white leading-tight">{seriesName}</h2>
+              <p className="text-[11px] text-indigo-300 mt-0.5">SAT Diagnostic Report</p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-white">
+            {/* Raw score pill */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-white"
+                 style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}>
               <span className="text-sm font-extrabold">{totalScore}/{totalMax}</span>
-              <span className="text-[11px] opacity-70">({totalPct}%)</span>
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${passed ? 'bg-emerald-400 text-white' : 'bg-red-400 text-white'}`}>
+              <span className="text-[11px] opacity-60">({totalPct}%)</span>
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${passed ? 'bg-emerald-400' : 'bg-red-400'}`}>
                 {passed ? 'PASSED' : 'FAILED'}
               </span>
             </div>
             <button onClick={handleDownload} title="Download report"
-              className="w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-emerald-500 flex items-center justify-center text-sm transition-colors">
-              ⬇
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white transition-all"
+                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.4)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}>
+              ⬇ Export
             </button>
             <button onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-white/30 flex items-center justify-center text-sm font-bold transition-colors">
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold text-white transition-all"
+                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}>
               ✕
             </button>
           </div>
         </div>
 
-        {/* Score summary strip */}
-        <div className="shrink-0 grid grid-cols-2 border-b border-gray-100">
-          <div className="flex items-center gap-3 px-6 py-2.5 bg-blue-50 border-r border-gray-100">
-            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">R&W</span>
-            <span className="text-sm font-extrabold text-blue-800">{rwScore}/{rwMax}</span>
-            <span className="text-xs text-blue-500">{rwMax > 0 ? Math.round((rwScore / rwMax) * 100) : 0}%</span>
+        {/* Score strip */}
+        <div className="flex items-center gap-4 px-6 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold"
+                  style={{ background: 'rgba(96,165,250,0.25)', color: '#93c5fd' }}>R&W</span>
+            <span className="text-sm font-extrabold text-white">{rwScore}/{rwMax}</span>
+            <span className="text-[11px] text-blue-300">
+              {rwMax > 0 ? Math.round((rwScore / rwMax) * 100) : 0}%
+            </span>
           </div>
-          <div className="flex items-center gap-3 px-6 py-2.5 bg-purple-50">
-            <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wide">Math</span>
-            <span className="text-sm font-extrabold text-purple-800">{mathScore}/{mathMax}</span>
-            <span className="text-xs text-purple-500">{mathMax > 0 ? Math.round((mathScore / mathMax) * 100) : 0}%</span>
+          <div className="h-5 w-px" style={{ background: 'rgba(255,255,255,0.15)' }} />
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold"
+                  style={{ background: 'rgba(167,139,250,0.25)', color: '#c4b5fd' }}>Math</span>
+            <span className="text-sm font-extrabold text-white">{mathScore}/{mathMax}</span>
+            <span className="text-[11px] text-purple-300">
+              {mathMax > 0 ? Math.round((mathScore / mathMax) * 100) : 0}%
+            </span>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="shrink-0 border-b border-gray-100 bg-white px-5 pt-3 flex gap-1">
+        <div className="flex gap-0.5 px-4 overflow-x-auto scrollbar-hide">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setView(t.key)}
-              className="px-4 py-1.5 rounded-t-lg text-[12px] font-bold border-b-2 transition-all"
-              style={view === t.key
-                ? { borderColor: '#4f46e5', color: '#4f46e5', background: '#fff' }
-                : { borderColor: 'transparent', color: '#9ca3af' }}>
+                    className="shrink-0 px-4 py-2.5 rounded-t-xl text-[12px] font-bold transition-all whitespace-nowrap"
+                    style={view === t.key
+                      ? { background: '#f1f5f9', color: '#4f46e5' }
+                      : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)' }}>
               {t.label}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Module sub-tabs (questions view only) */}
-        {view === 'questions' && (
-          <div className="shrink-0 border-b border-gray-100 bg-gray-50 px-5 py-2 flex gap-1.5 flex-wrap">
+      {/* ── Projected SAT Score ──────────────────────────────────────────── */}
+      {view === 'sat_score' && (
+        <div className="flex-1 overflow-y-auto">
+          <ProjectedSATScore rwM1={rwM1} rwM2={rwM2} mathM1={mathM1} mathM2={mathM2} />
+        </div>
+      )}
+
+      {/* ── Questions view ──────────────────────────────────────────────── */}
+      {view === 'questions' && (
+        <>
+          {/* Module sub-tabs */}
+          <div className="shrink-0 border-b border-gray-200 bg-white px-5 py-2 flex gap-1.5 flex-wrap shadow-sm">
             {modules.map(m => (
               <button key={m.key} onClick={() => setActiveModule(m.key)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all"
-                style={activeModule === m.key
-                  ? { background: m.color, color: '#fff' }
-                  : { background: '#f3f4f6', color: '#9ca3af' }}>
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all"
+                      style={activeModule === m.key
+                        ? { background: m.color, color: '#fff' }
+                        : { background: '#f3f4f6', color: '#9ca3af' }}>
                 {m.label}
                 {m.data && (
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold"
-                    style={activeModule === m.key
-                      ? { background: 'rgba(255,255,255,0.25)', color: '#fff' }
-                      : { background: '#e5e7eb', color: '#6b7280' }}>
+                        style={activeModule === m.key
+                          ? { background: 'rgba(255,255,255,0.25)', color: '#fff' }
+                          : { background: '#e5e7eb', color: '#6b7280' }}>
                     {m.data.score}/{m.data.max_score}
                   </span>
                 )}
               </button>
             ))}
           </div>
-        )}
 
-        {/* ── Questions view ── */}
-        {view === 'questions' && (
           <div className="flex-1 overflow-y-auto p-5 space-y-3">
             {(!activeModData?.data?.breakdown || activeModData.data.breakdown.length === 0) ? (
               <div className="text-center py-12 text-gray-400 text-sm">No questions available for this module.</div>
@@ -792,14 +985,23 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
               activeModData.data.breakdown.map((b, idx) => (
                 <div key={idx} className={`rounded-2xl border overflow-hidden ${b.is_correct ? 'border-emerald-200' : 'border-red-200'}`}>
                   <div className="flex items-center gap-3 px-4 py-3"
-                    style={{ background: b.is_correct ? '#f0fdf4' : '#fff1f2' }}>
+                       style={{ background: b.is_correct ? '#f0fdf4' : '#fff1f2' }}>
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold text-white shrink-0 ${b.is_correct ? 'bg-emerald-500' : 'bg-red-500'}`}>
                       {idx + 1}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                       {b.topic && (
                         <span className="inline-flex text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5">
                           {b.topic}
+                        </span>
+                      )}
+                      {b.difficulty && (
+                        <span className={`inline-flex text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                          b.difficulty === 'hard'   ? 'bg-red-50 text-red-500 border border-red-200' :
+                          b.difficulty === 'medium' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                                                      'bg-green-50 text-green-600 border border-green-200'
+                        }`}>
+                          {b.difficulty}
                         </span>
                       )}
                     </div>
@@ -829,62 +1031,64 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
               ))
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {/* ── Topic Mastery view ── */}
-        {view === 'topics' && (
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {Object.entries(topicMastery).map(([groupName, topics]) => (
-              <div key={groupName} className="rounded-xl overflow-hidden border border-gray-200">
-                <div className="bg-gray-800 px-4 py-3">
-                  <p className="text-sm font-bold text-white">{groupName}</p>
-                </div>
-                <div className="grid grid-cols-[1fr_auto_160px] bg-gray-700 px-4 py-2">
-                  <span className="text-[10px] font-extrabold text-gray-300 uppercase tracking-widest">Topics</span>
-                  <span className="text-[10px] font-extrabold text-gray-300 uppercase tracking-widest text-center px-6">Mastery</span>
-                  <span className="text-[10px] font-extrabold text-gray-300 uppercase tracking-widest text-right">Score</span>
-                </div>
-                {Object.entries(topics).map(([topic, data]) => {
-                  const pct     = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                  const mastery = getMasteryLevel(pct);
-                  return (
-                    <div key={topic} className="grid grid-cols-[1fr_auto_160px] items-center px-4 py-3 border-t border-gray-100 bg-white">
-                      <div>
-                        <p className="text-[13px] text-gray-700">{topic}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">{data.correct}/{data.total} correct</p>
-                      </div>
-                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mx-6"
-                        style={{ background: mastery.bg, color: mastery.color }}>
-                        {mastery.label}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: mastery.bar }} />
-                        </div>
-                        <span className="text-[10px] font-bold shrink-0 w-8 text-right" style={{ color: mastery.bar }}>{pct}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
+      {/* ── Topic Mastery view ──────────────────────────────────────────── */}
+      {view === 'topics' && (
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {Object.entries(topicMastery).map(([groupName, topics]) => (
+            <div key={groupName} className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+              <div className="px-5 py-3.5"
+                   style={{ background: 'linear-gradient(135deg, #1e293b, #334155)' }}>
+                <p className="text-sm font-extrabold text-white">{groupName}</p>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="grid grid-cols-[1fr_auto_160px] bg-slate-700 px-5 py-2">
+                <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest">Topic</span>
+                <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest text-center px-6">Mastery</span>
+                <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest text-right">Score</span>
+              </div>
+              {Object.entries(topics).map(([topic, data]) => {
+                const pct     = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                const mastery = getMasteryLevel(pct);
+                return (
+                  <div key={topic} className="grid grid-cols-[1fr_auto_160px] items-center px-5 py-3.5 border-t border-gray-100 bg-white hover:bg-slate-50 transition-colors">
+                    <div>
+                      <p className="text-[13px] font-medium text-gray-800">{topic}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{data.correct}/{data.total} correct</p>
+                    </div>
+                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full mx-6"
+                          style={{ background: mastery.bg, color: mastery.color }}>
+                      {mastery.label}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                             style={{ width: `${pct}%`, background: mastery.bar }} />
+                      </div>
+                      <span className="text-[10px] font-extrabold shrink-0 w-8 text-right" style={{ color: mastery.bar }}>{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* ── Charts view ── */}
-        {view === 'charts' && (
-          <div className="flex-1 overflow-y-auto">
-            <SATTopicCharts topicMastery={topicMastery} />
-          </div>
-        )}
+      {/* ── Charts view ─────────────────────────────────────────────────── */}
+      {view === 'charts' && (
+        <div className="flex-1 overflow-y-auto">
+          <SATTopicCharts topicMastery={topicMastery} />
+        </div>
+      )}
 
-        {/* ── AI Summary view ── */}
-        {view === 'summary' && (
-          <div className="flex-1 overflow-y-auto">
-            <SATAISummaryView aiData={aiData} onDownload={handleDownload} />
-          </div>
-        )}
-      </div>
+      {/* ── AI Summary view ─────────────────────────────────────────────── */}
+      {view === 'summary' && (
+        <div className="flex-1 overflow-y-auto">
+          <SATAISummaryView aiData={aiData} onDownload={handleDownload} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1124,7 +1328,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
         setPhase(cur === 'rw_m1' ? 'rw_m1_done' : 'math_m1_done');
       } else if (cur === 'rw_m2' || cur === 'math_m2') {
         const res = await satService.submitModule2(sessionRef.current, buildAns(questionsRef.current, answersRef.current));
-        const m2data = { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current] };
+        const m2data = { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current], tier: res.module_2.tier };
         if (cur === 'rw_m2') {
           rwM2Ref.current = m2data;
           setPhase('rw_done');
