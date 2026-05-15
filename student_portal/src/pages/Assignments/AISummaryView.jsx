@@ -98,13 +98,7 @@ export default function AISummaryView({ aiData, onDownload }) {
         </div>
       </div>
 
-      <button
-        onClick={onDownload}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-        style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}
-      >
-        ⬇ &nbsp;Download Full Report (.html)
-      </button>
+
       <p className="text-center text-[11px] text-gray-400">
         Opens as an HTML file — open in browser and print to save as PDF.
       </p>

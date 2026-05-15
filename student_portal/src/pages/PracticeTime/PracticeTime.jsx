@@ -237,9 +237,19 @@ function TestTaker({ config, onFinish }) {
           const selected = answers[qId];
           return (
             <div key={qId} className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-start gap-3 mb-2">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
                 <p className="text-sm text-slate-900 leading-relaxed">{q.title}</p>
+              </div>
+              <div className="flex items-center gap-2 mb-3 pl-9 flex-wrap">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 select-all">
+                  ID: {qId}
+                </span>
+                {q.correct_answer && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300">
+                    Ans: {q.correct_answer}
+                  </span>
+                )}
               </div>
               {q.description && (
                 <p className="text-xs text-slate-500 mb-3 pl-9">{q.description}</p>
@@ -249,17 +259,23 @@ function TestTaker({ config, onFinish }) {
                   const text = q.choices?.[opt];
                   if (!text) return null;
                   const isSelected = selected === opt;
+                  const isCorrect  = q.correct_answer === opt;
+                  let btnClass = 'flex items-start gap-3 px-4 py-3 rounded-xl border text-left text-sm transition-all ';
+                  if (isCorrect && isSelected)    btnClass += 'border-green-500 bg-green-50 text-green-800';
+                  else if (isCorrect)             btnClass += 'border-green-400 bg-green-50/60 text-green-700';
+                  else if (isSelected)            btnClass += 'border-indigo-400 bg-indigo-50 text-indigo-800';
+                  else                            btnClass += 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30 text-slate-700';
+                  let circleClass = 'shrink-0 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ';
+                  if (isCorrect && isSelected)    circleClass += 'border-green-600 bg-green-600 text-white';
+                  else if (isCorrect)             circleClass += 'border-green-500 bg-green-100 text-green-700';
+                  else if (isSelected)            circleClass += 'border-indigo-500 bg-indigo-500 text-white';
+                  else                            circleClass += 'border-slate-300 text-slate-400';
                   return (
                     <button key={opt} onClick={() => setAnswers(a => ({ ...a, [qId]: opt }))}
-                      className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left text-sm transition-all ${
-                        isSelected
-                          ? 'border-indigo-400 bg-indigo-50 text-indigo-800'
-                          : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30 text-slate-700'
-                      }`}>
-                      <span className={`shrink-0 w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${
-                        isSelected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400'
-                      }`}>{opt}</span>
-                      <span className="leading-snug">{text}</span>
+                      className={btnClass}>
+                      <span className={circleClass}>{opt}</span>
+                      <span className="leading-snug flex-1">{text}</span>
+                      {isCorrect && <span className="shrink-0 text-[11px] font-bold text-green-700 ml-auto pl-2">✓</span>}
                     </button>
                   );
                 })}

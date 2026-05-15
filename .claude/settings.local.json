@@ -22,7 +22,11 @@
       "Bash(dir /s /b src)",
       "PowerShell(\\(Get-Content \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\\\\pages\\\\SATTests\\\\SATTests.jsx\" | Measure-Object -Line\\).Lines)",
       "Bash(Get-ChildItem -Recurse -Name)",
-      "Bash(Select-Object -First 100)"
+      "Bash(Select-Object -First 100)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -First 50 | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\sat\" -Recurse -File | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\students\" -Recurse -File | ForEach-Object { $_.FullName })"
     ]
   }
 }
