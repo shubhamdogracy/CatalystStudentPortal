@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { satService } from '../../services/api';
+import MathContent from '../../components/common/MathContent';
 
 const SUBJ_LABEL = { math: 'Math', reading_writing: 'Reading & Writing' };
 const SUBJ_STYLE = { math: 'bg-purple-100 text-purple-700', reading_writing: 'bg-blue-100 text-blue-700' };
@@ -158,7 +159,13 @@ function TestTaker({ config, onFinish }) {
     satService.startPractice(config._id)
       .then(res => {
         setSessionId(res.session_id);
-        setQuestions(res.questions || []);
+        setQuestions((res.questions || []).map(q => ({
+          ...q,
+          _id:         q._id || q.id,
+          title:       q.title || q.stem || '',
+          description: q.description || null,
+          choices:     q.choices || { A: q.option_a || '', B: q.option_b || '', C: q.option_c || '', D: q.option_d || '' },
+        })));
         const elapsed = res.started_at
           ? Math.floor((Date.now() - new Date(res.started_at).getTime()) / 1000)
           : 0;
@@ -239,7 +246,7 @@ function TestTaker({ config, onFinish }) {
             <div key={qId} className="bg-white rounded-2xl border border-slate-200 p-5">
               <div className="flex items-start gap-3 mb-2">
                 <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-                <p className="text-sm text-slate-900 leading-relaxed">{q.title}</p>
+                <MathContent html={q.title} className="text-sm text-slate-900 leading-relaxed" />
               </div>
               <div className="flex items-center gap-2 mb-3 pl-9 flex-wrap">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 select-all">
@@ -252,7 +259,7 @@ function TestTaker({ config, onFinish }) {
                 )}
               </div>
               {q.description && (
-                <p className="text-xs text-slate-500 mb-3 pl-9">{q.description}</p>
+                <MathContent html={q.description} className="text-xs text-slate-500 mb-3 pl-9" />
               )}
               <div className="flex flex-col gap-2 pl-9">
                 {['A', 'B', 'C', 'D'].map(opt => {
@@ -274,7 +281,7 @@ function TestTaker({ config, onFinish }) {
                     <button key={opt} onClick={() => setAnswers(a => ({ ...a, [qId]: opt }))}
                       className={btnClass}>
                       <span className={circleClass}>{opt}</span>
-                      <span className="leading-snug flex-1">{text}</span>
+                      <MathContent html={text} className="leading-snug flex-1" />
                       {isCorrect && <span className="shrink-0 text-[11px] font-bold text-green-700 ml-auto pl-2">✓</span>}
                     </button>
                   );
@@ -330,7 +337,7 @@ function ResultsView({ config, results, onDone }) {
               }`}>
                 {b.is_correct ? '✓' : '✗'}
               </span>
-              <p className="text-sm text-slate-900 leading-relaxed">{b.title}</p>
+              <MathContent html={b.title || b.stem || ''} className="text-sm text-slate-900 leading-relaxed [&_p]:m-0" />
             </div>
             <div className="flex flex-col gap-1.5 pl-9">
               {['A', 'B', 'C', 'D'].map(opt => {
@@ -344,14 +351,14 @@ function ResultsView({ config, results, onDone }) {
                     isSelected ? 'bg-red-50 text-red-700' : 'text-slate-500'
                   }`}>
                     <span className="font-bold shrink-0">{opt}.</span>
-                    <span>{text}</span>
+                    <MathContent html={text} className="flex-1 [&_p]:m-0" />
                     {isCorrect  && <span className="ml-auto shrink-0 text-green-600">✓ Correct</span>}
                     {isSelected && !isCorrect && <span className="ml-auto shrink-0 text-red-500">Your answer</span>}
                   </div>
                 );
               })}
               {b.explanation && (
-                <p className="text-xs text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1.5">{b.explanation}</p>
+                <MathContent html={b.explanation} className="text-xs text-slate-500 italic mt-1.5 border-t border-slate-100 pt-1.5 [&_p]:m-0" />
               )}
             </div>
           </div>

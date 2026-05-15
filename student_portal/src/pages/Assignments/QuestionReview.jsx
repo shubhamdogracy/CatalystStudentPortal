@@ -1,3 +1,5 @@
+import MathContent from '../../components/common/MathContent';
+
 const formatTime = (mins) => (!mins && mins !== 0) ? '—' : `${mins}m`;
 
 export default function QuestionReview({ assignModule, moduleResult, activeModule, meta }) {
@@ -43,10 +45,11 @@ export default function QuestionReview({ assignModule, moduleResult, activeModul
                 {q.number || idx + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold truncate"
-                   style={{ color: notAnswered ? '#6b7280' : isCorrect ? '#065f46' : '#991b1b' }}>
-                  {q.title || 'Untitled question'}
-                </p>
+                <MathContent
+                  html={q.title || 'Untitled question'}
+                  className="text-[13px] font-semibold truncate"
+                  style={{ color: notAnswered ? '#6b7280' : isCorrect ? '#065f46' : '#991b1b' }}
+                />
                 {q.topic && (
                   <span className="inline-flex mt-0.5 text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5">
                     {q.topic}
@@ -72,8 +75,7 @@ export default function QuestionReview({ assignModule, moduleResult, activeModul
 
             <div className="px-4 py-4 bg-white space-y-3">
               {q.description && (
-                <div className="text-[13px] text-gray-700 leading-relaxed border-l-2 pl-3 border-gray-200"
-                     dangerouslySetInnerHTML={{ __html: q.description }} />
+                <MathContent html={q.description} className="text-[13px] text-gray-700 leading-relaxed border-l-2 pl-3 border-gray-200" />
               )}
 
               <div className="grid grid-cols-1 gap-1.5">
@@ -91,7 +93,7 @@ export default function QuestionReview({ assignModule, moduleResult, activeModul
                            style={{ background: border, color }}>
                         {letter}
                       </div>
-                      <span className="text-[13px] flex-1" style={{ color }}>{q.choices?.[letter] || '—'}</span>
+                      <MathContent html={q.choices?.[letter] || '—'} className="text-[13px] flex-1" style={{ color }} />
                       <div className="flex items-center gap-1 shrink-0">
                         {isStudentAnswer && <span className="text-[10px] font-bold" style={{ color }}>Your answer</span>}
                         {isAnswerKey      && <span className="text-[10px] font-extrabold text-emerald-600">✓ Key</span>}
@@ -106,8 +108,7 @@ export default function QuestionReview({ assignModule, moduleResult, activeModul
                   <span className="text-base shrink-0">💡</span>
                   <div>
                     <p className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wide mb-1">Explanation</p>
-                    <div className="text-[12px] text-amber-800 leading-relaxed"
-                         dangerouslySetInnerHTML={{ __html: q.explanation }} />
+                    <MathContent html={q.explanation} className="text-[12px] text-amber-800 leading-relaxed [&_p]:m-0" />
                   </div>
                 </div>
               )}
