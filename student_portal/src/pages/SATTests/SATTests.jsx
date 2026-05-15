@@ -33,8 +33,18 @@ const SERIES_SUFFIX = / — (Math|Reading & Writing)$/;
 const getSeriesName = (name) => name.replace(SERIES_SUFFIX, '').trim();
 
 
+function boldChoiceLabels(html) {
+  if (!html) return html;
+  return html.replace(
+    /(Choice\s+[A-D]\s+is\s+(?:the\s+best\s+answer|correct|incorrect)\.?)/gi,
+    '<strong>$1</strong>',
+  );
+}
+
 // ─── Question data normaliser ──────────────────────────────────────────────────
 function normalizeQuestion(q) {
+  const correctAnswer = q.correct_answer || q.answer || q.correct || q.answer_key || null;
+  console.log('[normalizeQuestion] id:', q._id || q.id, '| all keys:', Object.keys(q), '| correct_answer resolved:', correctAnswer);
   return {
     ...q,
     _id: q._id || q.id,
@@ -47,6 +57,7 @@ function normalizeQuestion(q) {
       D: q.option_d || '',
     },
     format: q.format || 'multiple_choice',
+    correct_answer: correctAnswer,
   };
 }
 
@@ -137,9 +148,7 @@ function Section({ label, data, expanded, onToggle }) {
                 {b.topic && <span className="ml-auto">{b.topic}</span>}
               </div>
               {b.explanation && (
-                <p className="text-[10px] italic mt-2 pl-7 border-t pt-2" style={{ color: C.textMuted, borderColor: C.bg1 }}>
-                  {b.explanation}
-                </p>
+                <MathContent html={boldChoiceLabels(b.explanation)} className="text-[10px] italic mt-2 pl-7 border-t pt-2 [&_p]:m-0 [&_p]:mb-1" style={{ color: C.textMuted, borderColor: C.bg1 }} />
               )}
             </div>
           ))}
@@ -243,7 +252,7 @@ function PracticeResults({ config, results, onDone }) {
               )}
               {b.explanation && (
                 <div className="text-[11px] italic mt-1.5 border-t pt-1.5" style={{ color: C.textMuted, borderColor: C.bg1 }}>
-                  <MathContent html={b.explanation} className="[&_p]:m-0 [&_p]:mb-1" />
+                  <MathContent html={boldChoiceLabels(b.explanation)} className="[&_p]:m-0 [&_p]:mb-1" />
                 </div>
               )}
             </div>
@@ -654,7 +663,7 @@ function SATTopicCharts({ topicMastery }) {
   );
 }
 
-function SATAISummaryView({ aiData, onDownload }) {
+function SATAISummaryView({ aiData }) {
   if (!aiData) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
@@ -746,11 +755,6 @@ function SATAISummaryView({ aiData, onDownload }) {
         </div>
       </div>
 
-      <button onClick={onDownload}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-        style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-        ⬇ &nbsp;Download Full Report (.html)
-      </button>
       <p className="text-center text-[11px] text-gray-400">Opens as an HTML file — open in browser and print to save as PDF.</p>
     </div>
   );
@@ -824,8 +828,8 @@ ${Object.keys(topicMastery).length > 0 ? `
 }
 
 // ─── SAT Full Test Results — full-screen gamified layout ───────────────────────
-function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
-  const [view,         setView]         = useState('sat_score');
+function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose, isDiagnostic = false }) {
+  const [view,         setView]         = useState(isDiagnostic ? 'sat_score' : 'questions');
   const [activeModule, setActiveModule] = useState('rw_m1');
 
   const rwScore    = (rwM1?.score    || 0) + (rwM2?.score    || 0);
@@ -856,7 +860,7 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
   const activeModData = modules.find(m => m.key === activeModule);
 
   const TABS = [
-    { key: 'sat_score', label: '🎯 SAT Score'    },
+    ...(isDiagnostic ? [{ key: 'sat_score', label: '🎯 SAT Score' }] : []),
     { key: 'questions', label: '📝 Questions'     },
     ...(hasTopics ? [{ key: 'topics',  label: '📊 Topic Mastery' }] : []),
     ...(hasTopics ? [{ key: 'charts',  label: '📈 Charts'        }] : []),
@@ -1022,7 +1026,7 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose }) {
                         <span className="text-base shrink-0">💡</span>
                         <div>
                           <p className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wide mb-1">Explanation</p>
-                          <p className="text-[12px] text-amber-800 leading-relaxed">{b.explanation}</p>
+                          <MathContent html={boldChoiceLabels(b.explanation)} className="text-[12px] text-amber-800 leading-relaxed [&_p]:m-0 [&_p]:mb-1" />
                         </div>
                       </div>
                     )}
@@ -1277,7 +1281,7 @@ function AdaptiveTaker({ config, onFinish }) {
 const TIMED = new Set(['rw_m1', 'rw_m2', 'math_m1', 'math_m2']);
 
 // ─── Full 4-module SAT taker (R&W M1 → R&W M2 → Math M1 → Math M2) ───────────
-function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
+function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish }) {
   const [phase,       setPhase]       = useState('init');
   const [questions,   setQuestions]   = useState([]);
   const [answers,     setAnswers]     = useState({});
@@ -1419,6 +1423,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, onFinish }) {
       rwM1={results.rwM1} rwM2={results.rwM2}
       mathM1={results.mathM1} mathM2={results.mathM2}
       seriesName={seriesName} onClose={onFinish}
+      isDiagnostic={testType === 'diagnostic'}
     />
   );
   if (phase === 'rw_m1_done' || phase === 'math_m1_done')
@@ -1771,11 +1776,12 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
         const res  = await satService.getResults(latestRw._id);
         const data = res.data || res;
         setViewModal({
-          rwM1:       data.reading_writing?.module_1 || {},
-          rwM2:       data.reading_writing?.module_2 || {},
-          mathM1:     data.math?.module_1            || {},
-          mathM2:     data.math?.module_2            || {},
-          seriesName: g.seriesName,
+          rwM1:         data.reading_writing?.module_1 || {},
+          rwM2:         data.reading_writing?.module_2 || {},
+          mathM1:       data.math?.module_1            || {},
+          mathM2:       data.math?.module_2            || {},
+          seriesName:   g.seriesName,
+          isDiagnostic: g.type === 'diagnostic',
         });
         return;
       }
@@ -1787,11 +1793,12 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
       const rwData   = rwRes.data   || rwRes;
       const mathData = mathRes.data || mathRes;
       setViewModal({
-        rwM1:       rwData.module_1   || {},
-        rwM2:       rwData.module_2   || {},
-        mathM1:     mathData.module_1 || {},
-        mathM2:     mathData.module_2 || {},
-        seriesName: g.seriesName,
+        rwM1:         rwData.module_1   || {},
+        rwM2:         rwData.module_2   || {},
+        mathM1:       mathData.module_1 || {},
+        mathM2:       mathData.module_2 || {},
+        seriesName:   g.seriesName,
+        isDiagnostic: g.type === 'diagnostic',
       });
     } catch (e) { console.error('Failed to load results:', e); }
     finally { setModalLoading(null); }
@@ -1809,6 +1816,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
           rwM1={viewModal.rwM1} rwM2={viewModal.rwM2}
           mathM1={viewModal.mathM1} mathM2={viewModal.mathM2}
           seriesName={viewModal.seriesName}
+          isDiagnostic={viewModal.isDiagnostic}
           onClose={() => setViewModal(null)}
         />
       )}
@@ -1902,7 +1910,7 @@ function AdaptiveConfigList({ onStart, defaultFilter = 'all', isGuest = false })
                     {isLoadingThis ? 'Loading results…' : 'View Results →'}
                   </button>
                 ) : (
-                  <button onClick={() => onStart({ type: 'full', rw: g.rw, math: g.math, seriesName: g.seriesName })}
+                  <button onClick={() => onStart({ type: 'full', rw: g.rw, math: g.math, seriesName: g.seriesName, testType: g.type })}
                     disabled={!canStart}
                     className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
                     style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
@@ -2160,6 +2168,7 @@ export default function SATTests({ student, onTestStart, onTestEnd, defaultTab =
         rwConfig={activeTest.rw}
         mathConfig={activeTest.math}
         seriesName={activeTest.seriesName}
+        testType={activeTest.testType}
         onFinish={handleFinish}
       />
     );
