@@ -1,4 +1,4 @@
-export default function AISummaryView({ aiData, onDownload }) {
+export default function AISummaryView({ aiData }) {
   if (!aiData) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
