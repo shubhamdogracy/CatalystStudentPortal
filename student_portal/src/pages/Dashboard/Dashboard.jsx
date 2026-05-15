@@ -29,21 +29,24 @@ export default function Dashboard({ student }) {
     practice:   { total: 0, completed: 0 },
     mock:       { total: 0, completed: 0 },
   });
+  const [inProgress, setInProgress] = useState({ diagnostic: false, mock: false, practice: false });
   const [loadingTests, setLoadingTests] = useState(true);
 
   const loadTestStats = useCallback(async () => {
     try {
-      const [examRes, histRes, practiceRes, practiceHistRes] = await Promise.all([
+      const [examRes, histRes, practiceRes, practiceHistRes, activeRes] = await Promise.all([
         satService.listExamConfigs().catch(() => ({ data: [] })),
         satService.getHistory().catch(() => ({ data: [] })),
         satService.listPractice().catch(() => ({ data: [] })),
         satService.getPracticeHistory().catch(() => ({ data: [] })),
+        satService.getActiveAttempts().catch(() => ({ data: [] })),
       ]);
 
-      const examConfigs  = examRes.data        || [];
-      const history      = histRes.data        || [];
-      const practiceConf = practiceRes.data    || [];
-      const practiceHist = practiceHistRes.data || [];
+      const examConfigs   = examRes.data         || [];
+      const history       = histRes.data         || [];
+      const practiceConf  = practiceRes.data     || [];
+      const practiceHist  = practiceHistRes.data || [];
+      const activeAttempts = activeRes.data      || [];
 
       // A series test has two sibling configs named "X — Math" / "X — Reading & Writing".
       // They represent ONE test, so we group them and count the pair as a single entry.
@@ -103,6 +106,12 @@ export default function Dashboard({ student }) {
         practice:   { total: practiceConf.length, completed: practiceCompleted },
         mock:       { total: mockTotal,            completed: mockCompleted },
       });
+
+      setInProgress({
+        diagnostic: activeAttempts.some(a => a.type === 'diagnostic'),
+        mock:       activeAttempts.some(a => a.type === 'mock'),
+        practice:   false, // practice sessions handled separately; no resume needed on dashboard
+      });
     } catch (e) {
       console.error('Dashboard test stats error:', e);
     } finally {
@@ -122,34 +131,40 @@ export default function Dashboard({ student }) {
 
   const TEST_CARDS = [
     {
-      key:       'diagnostic',
-      emoji:     '🔬',
-      title:     'Diagnostic Tests',
-      bgGradient: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+      key:        'diagnostic',
+      emoji:      '🔬',
+      title:      'Diagnostic Tests',
+      typeLabel:  'Diagnostic',
+      bgGradient:  'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
       accentColor: '#ea580c',
-      ringColor:  '#f97316',
-      navPath:   '/sat/diagnostic',
-      stats:     testStats.diagnostic,
+      ringColor:   '#f97316',
+      navPath:    '/sat/diagnostic',
+      stats:      testStats.diagnostic,
+      inProgress: inProgress.diagnostic,
     },
     {
-      key:       'practice',
-      emoji:     '📝',
-      title:     'Practice Tests',
-      bgGradient: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+      key:        'practice',
+      emoji:      '📝',
+      title:      'Practice Tests',
+      typeLabel:  'Practice',
+      bgGradient:  'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
       accentColor: '#16a34a',
-      ringColor:  '#22c55e',
-      navPath:   '/sat/practice',
-      stats:     testStats.practice,
+      ringColor:   '#22c55e',
+      navPath:    '/sat/practice',
+      stats:      testStats.practice,
+      inProgress: inProgress.practice,
     },
     {
-      key:       'mock',
-      emoji:     '🏆',
-      title:     'Mock Tests',
-      bgGradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+      key:        'mock',
+      emoji:      '🏆',
+      title:      'Mock Tests',
+      typeLabel:  'Mock',
+      bgGradient:  'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
       accentColor: '#7c3aed',
-      ringColor:  '#8b5cf6',
-      navPath:   '/sat/mock',
-      stats:     testStats.mock,
+      ringColor:   '#8b5cf6',
+      navPath:    '/sat/mock',
+      stats:      testStats.mock,
+      inProgress: inProgress.mock,
     },
   ];
 
@@ -198,12 +213,14 @@ export default function Dashboard({ student }) {
                 key={card.key}
                 emoji={card.emoji}
                 title={card.title}
+                typeLabel={card.typeLabel}
                 total={card.stats.total}
                 completed={card.stats.completed}
                 accentColor={card.accentColor}
                 bgGradient={card.bgGradient}
                 ringColor={card.ringColor}
                 navPath={card.navPath}
+                inProgress={card.inProgress}
               />
             ))}
           </div>

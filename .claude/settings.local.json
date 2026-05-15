@@ -26,7 +26,10 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -First 50 | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\sat\" -Recurse -File | ForEach-Object { $_.FullName })",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\students\" -Recurse -File | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\students\" -Recurse -File | ForEach-Object { $_.FullName })",
+      "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\" -Recurse -File)"
     ]
   }
 }

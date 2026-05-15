@@ -1351,16 +1351,39 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
   }, [timeLeft, submitModule]);
 
   useEffect(() => {
-    satService.startSessionDirect(rwConfig._id)
-      .then(res => {
+    (async () => {
+      try {
+        const res = await satService.startSessionDirect(rwConfig._id);
         sessionRef.current = res.session_id;
-        setQuestions((res.module_1.questions || []).map(normalizeQuestion));
-        const elapsed = res.module_1.started_at
-          ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
-        setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
-        setPhase('rw_m1');
-      })
-      .catch(e => { setError(e.message); setPhase('error'); });
+        const { status } = res;
+
+        if (!status || status === 'rw_m1_in_progress') {
+          setQuestions((res.module_1.questions || []).map(normalizeQuestion));
+          const elapsed = res.module_1.started_at
+            ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
+          setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
+          setPhase('rw_m1');
+        } else if (status === 'rw_m1_complete') {
+          setPhase('rw_m1_done');
+        } else if (status === 'rw_m2_in_progress') {
+          setQuestions((res.module_2.questions || []).map(normalizeQuestion));
+          const elapsed = res.module_2.started_at
+            ? Math.floor((Date.now() - new Date(res.module_2.started_at).getTime()) / 1000) : 0;
+          setTimeLeft(Math.max(0, res.module_2.time_limit_minutes * 60 - elapsed));
+          setPhase('rw_m2');
+        } else if (status === 'rw_done') {
+          setPhase('rw_done');
+        } else if (['math_m1_in_progress', 'math_m1_complete', 'math_m2_in_progress'].includes(status)) {
+          setPhase('math_loading');
+          const mathRes = await satService.startSessionDirect(mathConfig._id);
+          applyMathResume(mathRes);
+        }
+      } catch (e) {
+        setError(e.message);
+        setPhase('error');
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rwConfig._id]);
 
   const loadModule2 = useCallback(async () => {
@@ -1377,19 +1400,35 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
     finally { submittingRef.current = false; }
   }, []);
 
+  const applyMathResume = useCallback((mathRes) => {
+    sessionRef.current = mathRes.session_id;
+    if (mathRes.status === 'math_m1_complete') {
+      setPhase('math_m1_done');
+    } else if (mathRes.status === 'math_m2_in_progress') {
+      setQuestions((mathRes.module_2.questions || []).map(normalizeQuestion));
+      const elapsed = mathRes.module_2.started_at
+        ? Math.floor((Date.now() - new Date(mathRes.module_2.started_at).getTime()) / 1000) : 0;
+      setTimeLeft(Math.max(0, mathRes.module_2.time_limit_minutes * 60 - elapsed));
+      setQuestionIdx(0); setAnswers({});
+      setPhase('math_m2');
+    } else {
+      // math_m1_in_progress or fresh math_m1 start
+      setQuestions((mathRes.module_1.questions || []).map(normalizeQuestion));
+      const elapsed = mathRes.module_1.started_at
+        ? Math.floor((Date.now() - new Date(mathRes.module_1.started_at).getTime()) / 1000) : 0;
+      setTimeLeft(Math.max(0, mathRes.module_1.time_limit_minutes * 60 - elapsed));
+      setQuestionIdx(0); setAnswers({});
+      setPhase('math_m1');
+    }
+  }, []);
+
   const startMath = useCallback(async () => {
     setPhase('math_loading');
     try {
-      const res = await satService.startSessionDirect(mathConfig._id);
-      sessionRef.current = res.session_id;
-      setQuestions((res.module_1.questions || []).map(normalizeQuestion));
-      const elapsed = res.module_1.started_at
-        ? Math.floor((Date.now() - new Date(res.module_1.started_at).getTime()) / 1000) : 0;
-      setTimeLeft(Math.max(0, res.module_1.time_limit_minutes * 60 - elapsed));
-      setQuestionIdx(0); setAnswers({});
-      setPhase('math_m1');
+      const mathRes = await satService.startSessionDirect(mathConfig._id);
+      applyMathResume(mathRes);
     } catch (e) { setError(e.message); setPhase('error'); }
-  }, [mathConfig._id]);
+  }, [mathConfig._id, applyMathResume]);
 
   const addNote    = (qid, text) => setNotes(p => ({ ...p, [qid]: [...(p[qid] || []), text] }));
   const deleteNote = (qid, i)    => setNotes(p => ({ ...p, [qid]: (p[qid] || []).filter((_, j) => j !== i) }));
