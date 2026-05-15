@@ -6,6 +6,7 @@ import ProtectedRoute        from './routes/ProtectedRoute';
 import PublicOnlyRoute       from './routes/PublicOnlyRoute';
 import GuestBlockedRoute     from './routes/GuestBlockedRoute';
 
+import ErrorBoundary from './components/common/ErrorBoundary';
 import SignIn        from './components/auth/SignIn';
 import Layout        from './components/layout/Layout';
 import Dashboard     from './pages/Dashboard/Dashboard';
@@ -41,6 +42,7 @@ export default function App() {
   });
 
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public only — redirect to /dashboard if already authenticated */}
       <Route element={<PublicOnlyRoute />}>
@@ -81,5 +83,6 @@ export default function App() {
       {/* 404 — catches everything else */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

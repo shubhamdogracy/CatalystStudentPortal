@@ -4,7 +4,7 @@ import { authService } from '../../services/api';
 import catalystLogo from '../../assets/catalyst-logo.png';
 
 const GRADES = ['6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College Freshman', 'College Sophomore', 'College Junior', 'College Senior'];
-const TARGET_YEARS = ['2025', '2026', '2027', '2028', '2029'];
+
 
 function InputField({ icon: Icon, type = 'text', placeholder, value, onChange, required, rightElement }) {
   return (
@@ -88,7 +88,7 @@ function SignInForm({ onLogin }) {
 }
 
 function GuestSignupForm({ onLogin }) {
-  const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '', grade: '', targetYear: '', city: '', parentName: '' });
+  const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '', grade: '', satExamDate: '', city: '', parentName: '' });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
@@ -172,12 +172,10 @@ function GuestSignupForm({ onLogin }) {
           </div>
         </div>
         <div>
-          <label className="block text-[12px] font-semibold text-slate-500 mb-1 uppercase tracking-[0.5px]">SAT Target Year</label>
-          <select value={form.targetYear} onChange={set('targetYear')}
-            className="w-full px-3 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[14px] text-slate-900 outline-none bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-[3px] focus:ring-indigo-600/10 transition-all appearance-none">
-            <option value="">Select year</option>
-            {TARGET_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <label className="block text-[12px] font-semibold text-slate-500 mb-1 uppercase tracking-[0.5px]">SAT Exam Date</label>
+          <input type="date" value={form.satExamDate} onChange={set('satExamDate')}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full px-3 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[14px] text-slate-900 outline-none bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-[3px] focus:ring-indigo-600/10 transition-all" />
         </div>
       </div>
 

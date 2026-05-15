@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { ProgressRing } from '../../components/ui';
 
-export default function TestCard({ emoji, title, total, completed, accentColor, bgGradient, ringColor, navPath }) {
+export default function TestCard({ emoji, title, typeLabel, total, completed, accentColor, bgGradient, ringColor, navPath, inProgress }) {
   const navigate = useNavigate();
   const pending  = Math.max(0, total - completed);
   const pct      = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -52,6 +52,22 @@ export default function TestCard({ emoji, title, total, completed, accentColor, 
           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: ringColor }} />
         </div>
       </div>
+
+      {inProgress ? (
+        <div className="relative z-10 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-amber-700">In Progress</span>
+          </div>
+          <span className="text-[11px] font-bold text-amber-700">Resume {typeLabel} Test →</span>
+        </div>
+      ) : pending > 0 ? (
+        <div className="relative z-10 flex items-center justify-end mt-1">
+          <span className="text-[11px] font-semibold" style={{ color: accentColor }}>
+            Start {typeLabel} Test →
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

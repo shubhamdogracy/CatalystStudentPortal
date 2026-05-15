@@ -56,6 +56,7 @@ export const satService = {
   getPracticeResults: (sessionId)          => req(`/sat/test/practice/${sessionId}/results`),
   getPracticeHistory: ()                   => req('/sat/test/practice/history'),
   getHistory:         ()                   => req('/sat/test/history'),
+  getActiveAttempts:  ()                   => req('/sat/test/active'),
 };
 
 export const chatService = {
