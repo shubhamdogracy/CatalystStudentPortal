@@ -1383,6 +1383,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
         setPhase('error');
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rwConfig._id]);
 
   const loadModule2 = useCallback(async () => {

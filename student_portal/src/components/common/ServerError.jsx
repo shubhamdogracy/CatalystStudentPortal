@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, ServerCrash } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -16,7 +16,7 @@ export default function ServerError({ onRetry, message }) {
   const [checking, setChecking]     = useState(false);
   const [attempts, setAttempts]     = useState(0);
   const [recovered, setRecovered]   = useState(false);
-  const tipRef                      = useRef(TIPS[Math.floor(Math.random() * TIPS.length)]);
+  const [tip]                        = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
 
   const check = useCallback(async () => {
     setChecking(true);
@@ -150,7 +150,7 @@ export default function ServerError({ onRetry, message }) {
           While you wait
         </p>
         <p className="text-slate-500 text-[13px] leading-relaxed italic">
-          "{tipRef.current}"
+          "{tip}"
         </p>
       </div>
 
