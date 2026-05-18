@@ -12,6 +12,7 @@ import DesmosCalculator from '../Assignments/DesmosCalculator';
 import MathReferencesPanel from '../Assignments/MathReferencesPanel';
 import { C } from '../Assignments/testConstants';
 import { getMasteryLevel, CHART_PALETTE, MASTERY_CHART_COLORS } from '../../utils/colorMapping';
+import { computeProjectedSATScore } from './satScoreUtils';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, Cell, AreaChart, Area, PieChart, Pie, ReferenceLine,
@@ -33,6 +34,13 @@ const TYPE_STYLE    = { mock: 'bg-emerald-100 text-emerald-700', diagnostic: 'bg
 const SERIES_SUFFIX = / — (Math|Reading & Writing)$/;
 const getSeriesName = (name) => name.replace(SERIES_SUFFIX, '').trim();
 
+
+function formatSecs(secs) {
+  if (secs == null || secs < 0) return '—';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
 
 function boldChoiceLabels(html) {
   if (!html) return html;
@@ -671,7 +679,7 @@ function SATTopicCharts({ topicMastery }) {
   );
 }
 
-function SATAISummaryView({ aiData }) {
+function SATAISummaryView({ aiData, onDownload }) {
   if (!aiData) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
@@ -763,76 +771,277 @@ function SATAISummaryView({ aiData }) {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-gray-400">Opens as an HTML file — open in browser and print to save as PDF.</p>
+      {onDownload && (
+        <div className="pt-2 border-t border-gray-100 flex justify-center">
+          <button
+            onClick={onDownload}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+            ⬇ Download PDF Report
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function downloadSATReport(seriesName, totalPct, passed, topicMastery, aiData, totalScore, totalMax) {
+function downloadSATReportPDF(seriesName, totalPct, passed, topicMastery, aiData, totalScore, totalMax, rwM1, rwM2, mathM1, mathM2) {
   const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-  let topicRowsHtml = '';
+
+  const projScore = computeProjectedSATScore(rwM1, rwM2, mathM1, mathM2);
+
+  const rwBreakdowns   = [...(rwM1?.breakdown || []),   ...(rwM2?.breakdown   || [])];
+  const mathBreakdowns = [...(mathM1?.breakdown || []), ...(mathM2?.breakdown || [])];
+  const allBreakdowns  = [...rwBreakdowns, ...mathBreakdowns];
+  const totalQ   = allBreakdowns.length;
+  const correctQ = allBreakdowns.filter(b => b.is_correct).length;
+  const wrongQ   = totalQ - correctQ;
+  const rwAcc   = rwBreakdowns.length   > 0 ? Math.round(rwBreakdowns.filter(b => b.is_correct).length   / rwBreakdowns.length   * 100) : 0;
+  const mathAcc = mathBreakdowns.length > 0 ? Math.round(mathBreakdowns.filter(b => b.is_correct).length / mathBreakdowns.length * 100) : 0;
+
+  const rwQT   = { ...(rwM1?.questionTimes   || {}), ...(rwM2?.questionTimes   || {}) };
+  const mathQT = { ...(mathM1?.questionTimes || {}), ...(mathM2?.questionTimes || {}) };
+  const hasTime = Object.keys(rwQT).length + Object.keys(mathQT).length > 0;
+
+  const sumTimes = (breakdowns, qt) => breakdowns.reduce((s, b) => s + (qt?.[b.question_id] || 0), 0);
+  const rwTotalSecs   = sumTimes(rwBreakdowns,   rwQT);
+  const mathTotalSecs = sumTimes(mathBreakdowns, mathQT);
+  const totalSecs     = rwTotalSecs + mathTotalSecs;
+  const rwAvgSecs     = rwBreakdowns.length   > 0 ? Math.round(rwTotalSecs   / rwBreakdowns.length)   : 0;
+  const mathAvgSecs   = mathBreakdowns.length > 0 ? Math.round(mathTotalSecs / mathBreakdowns.length) : 0;
+
+  // Aggregate topics per subject
+  const mathTopics = {}, rwTopics = {};
   for (const [group, topics] of Object.entries(topicMastery)) {
-    topicRowsHtml += `<tr><td colspan="4" style="background:#1e293b;color:#fff;font-weight:700;padding:8px 12px;font-size:13px;">${group}</td></tr>`;
+    const target = group.toLowerCase().includes('math') ? mathTopics : rwTopics;
     for (const [topic, data] of Object.entries(topics)) {
-      const pct     = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-      const mastery = getMasteryLevel(pct);
-      topicRowsHtml += `<tr>
-        <td style="padding:8px 12px;font-size:13px;">${topic}</td>
-        <td style="padding:8px 12px;text-align:center;">
-          <span style="background:${mastery.bg};color:${mastery.color};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">${mastery.label}</span>
-        </td>
-        <td style="padding:8px 12px;text-align:center;font-size:13px;">${data.correct}/${data.total}</td>
-        <td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:${mastery.color};">${pct}%</td>
-      </tr>`;
+      if (!target[topic]) target[topic] = { correct: 0, total: 0 };
+      target[topic].correct += data.correct;
+      target[topic].total   += data.total;
     }
   }
 
-  const aiHtml = aiData ? `
-    <div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:12px;border-left:4px solid #4f46e5;">
-      <h3 style="margin:0 0 12px;color:#4f46e5;font-size:15px;font-weight:700;">AI Performance Summary</h3>
-      <p style="margin:0 0 10px;color:#374151;line-height:1.6;font-size:13px;">${aiData.overallMsg}</p>
-      <p style="margin:0 0 10px;color:#065f46;line-height:1.6;font-size:13px;"><strong>Strong Areas:</strong> ${aiData.strengthMsg}</p>
-      <p style="margin:0 0 10px;color:#7c2d12;line-height:1.6;font-size:13px;"><strong>Focus Areas:</strong> ${aiData.improveMsg}</p>
-      ${aiData.devMsg ? `<p style="margin:0 0 10px;color:#92400e;line-height:1.6;font-size:13px;"><strong>Developing:</strong> ${aiData.devMsg}</p>` : ''}
-      <p style="margin:0;color:#374151;line-height:1.6;font-size:13px;"><strong>Next Steps:</strong> ${aiData.nextMsg}</p>
-    </div>` : '';
+  const cell = (v, extra = '') =>
+    `<td style="padding:10px 16px;text-align:center;font-size:14px;border-bottom:1px solid #e2e8f0;${extra}">${v}</td>`;
+
+  function masteryTableHtml(groupLabel, topics) {
+    if (!topics || !Object.keys(topics).length) return '';
+    const rows = Object.entries(topics).map(([topic, data]) => {
+      const pct = data.total > 0 ? Math.round(data.correct / data.total * 100) : 0;
+      const m = getMasteryLevel(pct);
+      const bar = `<div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+        <div style="width:80px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${m.bar};border-radius:4px;"></div>
+        </div>
+        <span style="font-weight:700;color:${m.color};font-size:13px;min-width:34px;text-align:right;">${pct}%</span>
+      </div>`;
+      return `<tr>
+        ${cell(`<span style="font-weight:600;">${topic}</span>`)}
+        ${cell(`<span style="background:${m.bg};color:${m.color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.05em;">${m.label}</span>`)}
+        ${cell(bar)}
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:32px;">
+      <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">${groupLabel}</h2>
+      <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#2d3a4a;">
+            <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">TOPICS</th>
+            <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">MASTERY LEVEL</th>
+            <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">SCORE</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function questionPerfHtml(sectionLabel, breakdowns, qt) {
+    if (!breakdowns?.length) return '';
+    const correct   = breakdowns.filter(b => b.is_correct).length;
+    const incorrect = breakdowns.length - correct;
+    const accuracy  = Math.round(correct / breakdowns.length * 100);
+    const BATCH = 6;
+    let batchesHtml = '';
+    for (let i = 0; i < breakdowns.length; i += BATCH) {
+      const batch = breakdowns.slice(i, i + BATCH);
+      const rows = batch.map((b, j) => {
+        const qNum = i + j + 1;
+        const secs = qt?.[b.question_id];
+        const timeStr = secs != null ? formatSecs(secs) : '—';
+        const badgeBg = b.is_correct ? '#22c55e' : '#ef4444';
+        const badgeTxt = b.is_correct ? 'CORRECT' : 'INCORRECT';
+        return `<tr>
+          ${cell(`<strong>Q${qNum}</strong>`)}
+          ${cell(`<span style="background:${badgeBg};color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">${badgeTxt}</span>`)}
+          ${hasTime ? cell(timeStr) : ''}
+        </tr>`;
+      }).join('');
+      batchesHtml += `<div style="margin-bottom:24px;">
+        <h4 style="font-size:14px;font-weight:700;color:#2d3a4a;margin-bottom:10px;text-align:center;">
+          Question Performance Breakdown — ${sectionLabel} (Questions ${i + 1}–${Math.min(i + BATCH, breakdowns.length)})
+        </h4>
+        <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="background:#2d3a4a;">
+              <th style="padding:10px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">QUESTION</th>
+              <th style="padding:10px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">STATUS</th>
+              ${hasTime ? '<th style="padding:10px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">STUDENT TIME</th>' : ''}
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+    }
+    const statCard = (val, lbl, col = '#2d3a4a') =>
+      `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;text-align:center;">
+        <div style="font-size:32px;font-weight:800;color:${col};">${val}</div>
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">${lbl}</div>
+      </div>`;
+    return `<div style="margin-bottom:36px;">
+      <h3 style="font-size:16px;font-weight:700;color:#2d3a4a;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;">${sectionLabel} — Question Performance</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;">
+        ${statCard(breakdowns.length, 'TOTAL QUESTIONS')}
+        ${statCard(correct, 'CORRECT ANSWERS', '#22c55e')}
+        ${statCard(incorrect, 'INCORRECT ANSWERS', '#ef4444')}
+        ${statCard(`${accuracy}%`, 'SECTION ACCURACY')}
+      </div>
+      ${batchesHtml}
+    </div>`;
+  }
+
+  const timeHtml = hasTime ? `<div style="margin-bottom:36px;">
+    <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Time Management</h2>
+    <div style="text-align:center;margin-bottom:20px;padding:24px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+      <p style="font-size:14px;font-weight:600;color:#475569;margin-bottom:8px;">Overall Time Spent</p>
+      <p style="font-size:40px;font-weight:800;color:#2d3a4a;line-height:1;">${formatSecs(totalSecs)}</p>
+      <p style="font-size:13px;color:#22c55e;margin-top:8px;">Total time spent across all sections</p>
+    </div>
+    <h4 style="font-size:14px;font-weight:700;color:#2d3a4a;margin-bottom:10px;text-align:center;">Section-wise Time Breakdown</h4>
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#2d3a4a;">
+          <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">SECTION</th>
+          <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">TIME SPENT</th>
+          <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">QUESTIONS</th>
+          <th style="padding:12px 16px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;text-align:center;">AVG TIME/QUESTION</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            ${cell('<strong>Reading &amp; Writing</strong>')}${cell(formatSecs(rwTotalSecs))}${cell(`<strong>${rwBreakdowns.length}</strong>`)}${cell(formatSecs(rwAvgSecs))}
+          </tr>
+          <tr>
+            ${cell('<strong>Math</strong>')}${cell(formatSecs(mathTotalSecs))}${cell(`<strong>${mathBreakdowns.length}</strong>`)}${cell(formatSecs(mathAvgSecs))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>` : '';
+
+  const aiSummaryHtml = aiData ? `<div style="margin-bottom:36px;padding:20px;background:#f8fafc;border-radius:12px;border-left:4px solid #4f46e5;">
+    <h3 style="margin:0 0 14px;color:#4f46e5;font-size:16px;font-weight:700;">AI Performance Summary</h3>
+    <p style="margin:0 0 10px;color:#374151;line-height:1.7;font-size:13px;">${aiData.overallMsg}</p>
+    <p style="margin:0 0 10px;color:#065f46;line-height:1.7;font-size:13px;"><strong>Strong Areas:</strong> ${aiData.strengthMsg}</p>
+    <p style="margin:0 0 10px;color:#7c2d12;line-height:1.7;font-size:13px;"><strong>Focus Areas:</strong> ${aiData.improveMsg}</p>
+    ${aiData.devMsg ? `<p style="margin:0 0 10px;color:#92400e;line-height:1.7;font-size:13px;"><strong>Developing:</strong> ${aiData.devMsg}</p>` : ''}
+    <p style="margin:0;color:#374151;line-height:1.7;font-size:13px;"><strong>Next Steps:</strong> ${aiData.nextMsg}</p>
+  </div>` : '';
 
   const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/>
-<title>SAT Report — ${seriesName}</title>
-<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;}.header{background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}.score-box{background:rgba(255,255,255,0.18);border-radius:10px;padding:10px 18px;text-align:center;}.score-box .score{font-size:26px;font-weight:800;}.pass-badge{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${passed ? '#10b981' : '#ef4444'};color:#fff;}h2{font-size:15px;font-weight:700;margin:24px 0 10px;color:#374151;}table{width:100%;border-collapse:collapse;margin-top:6px;}th{background:#374151;color:#fff;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}td{border-bottom:1px solid #e5e7eb;vertical-align:middle;}footer{margin-top:36px;font-size:11px;color:#9ca3af;text-align:center;}</style>
-</head><body>
-<div class="header">
-  <div>
-    <div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">SAT Score Report</div>
-    <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px;">${seriesName}</div>
-    <div style="font-size:11px;opacity:.6;margin-top:4px;">Completed: ${date}</div>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SAT Diagnostic Report — ${seriesName}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;}
+  .wrap{max-width:900px;margin:0 auto;background:#fff;}
+  @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.wrap{max-width:100%;}}.nb{page-break-inside:avoid;}
+</style>
+</head>
+<body><div class="wrap">
+  <div style="background:#2d3a4a;color:#fff;padding:40px 36px;text-align:center;">
+    <p style="font-size:13px;font-weight:700;opacity:0.7;margin-bottom:4px;">Catalyst Learning Platform</p>
+    <h1 style="font-size:26px;font-weight:800;margin-bottom:14px;">${seriesName}</h1>
+    <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:22px;">
+      <span style="font-size:14px;opacity:0.65;">Test Analytics Report</span>
+      <span style="background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">AI Generated</span>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;color:#fff;margin-bottom:10px;">Your report is here!</h2>
+    <p style="font-size:13px;opacity:0.6;max-width:500px;margin:0 auto;line-height:1.65;">
+      Comprehensive analysis powered by AI to provide detailed insights into your performance, highlighting strengths and areas for improvement across all test sections.
+    </p>
+    <p style="margin-top:18px;font-size:11px;opacity:0.4;font-weight:600;letter-spacing:0.06em;">Powered by CATALYST AI</p>
   </div>
-  <div class="score-box">
-    <div class="score">${totalPct}%</div>
-    <div style="font-size:12px;opacity:.75;margin-top:2px;">${totalScore} / ${totalMax} correct</div>
-    <div class="pass-badge">${passed ? 'PASSED' : 'NEEDS WORK'}</div>
+
+  <div style="padding:36px;">
+
+    <div class="nb" style="margin-bottom:36px;">
+      <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Test Summary</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;"><div style="font-size:36px;font-weight:800;color:#2d3a4a;">${totalScore}/${totalMax}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">TEST SCORE</div></div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;"><div style="font-size:36px;font-weight:800;color:#2d3a4a;">${totalPct}%</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">TEST MASTERY SCORE</div></div>
+      </div>
+    </div>
+
+    <div class="nb" style="margin-bottom:36px;">
+      <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Projected SAT Score</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;"><div style="font-size:36px;font-weight:800;color:#2d3a4a;">${projScore.rw.score}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">READING &amp; WRITING</div></div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;"><div style="font-size:36px;font-weight:800;color:#2d3a4a;">${projScore.math.score}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">MATH</div></div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;"><div style="font-size:36px;font-weight:800;color:#4f46e5;">${projScore.total}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">OVERALL</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-bottom:36px;" class="nb">
+      <div>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Question Analysis</h2>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;"><div style="font-size:30px;font-weight:800;color:#2d3a4a;">${totalQ}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">TOTAL QUESTIONS</div></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;"><div style="font-size:30px;font-weight:800;color:#22c55e;">${correctQ}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">CORRECT ANSWERS</div></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;"><div style="font-size:30px;font-weight:800;color:#ef4444;">${wrongQ}</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">INCORRECT ANSWERS</div></div>
+        </div>
+      </div>
+      <div>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a4a;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;">Accuracy by Subject</h2>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;"><div style="font-size:30px;font-weight:800;color:#2d3a4a;">${mathAcc}%</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">MATHEMATICS</div></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;"><div style="font-size:30px;font-weight:800;color:#2d3a4a;">${rwAcc}%</div><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;">READING &amp; WRITING</div></div>
+        </div>
+      </div>
+    </div>
+
+    ${timeHtml}
+    ${aiSummaryHtml}
+    ${masteryTableHtml('Mathematics Mastery', mathTopics)}
+    ${masteryTableHtml('Reading &amp; Writing Mastery', rwTopics)}
+
+    <div style="margin-bottom:36px;">
+      <h2 style="font-size:20px;font-weight:800;color:#2d3a4a;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;text-align:center;">Section-wise Question Performance Analysis</h2>
+      ${questionPerfHtml('Reading &amp; Writing', rwBreakdowns, rwQT)}
+      ${questionPerfHtml('Math', mathBreakdowns, mathQT)}
+    </div>
+
+    <div style="text-align:center;padding:24px 0;border-top:1px solid #e2e8f0;">
+      <p style="font-size:12px;color:#94a3b8;">Generated by Catalyst Learning Platform · ${date}</p>
+    </div>
   </div>
 </div>
-${aiHtml}
-${Object.keys(topicMastery).length > 0 ? `
-<h2>Topic Mastery</h2>
-<table>
-  <thead><tr><th>Topic</th><th style="text-align:center">Mastery Level</th><th style="text-align:center">Correct</th><th style="text-align:center">Score %</th></tr></thead>
-  <tbody>${topicRowsHtml}</tbody>
-</table>` : ''}
-<div class="footer">Generated by Catalyst Learning Platform &nbsp;·&nbsp; ${date}</div>
 </body></html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `sat-report-${seriesName.replace(/\s+/g, '-')}-${Date.now()}.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const w = window.open('', '_blank');
+  if (!w) {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `sat-report-${seriesName.replace(/\s+/g, '-')}.html`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    return;
+  }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 800);
 }
 
 // ─── SAT Full Test Results — full-screen gamified layout ───────────────────────
@@ -875,7 +1084,7 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose, isDi
     { key: 'summary',   label: '🤖 AI Summary'   },
   ];
 
-  const handleDownload = () => downloadSATReport(seriesName, totalPct, passed, topicMastery, aiData, totalScore, totalMax);
+  const handleDownload = () => downloadSATReportPDF(seriesName, totalPct, passed, topicMastery, aiData, totalScore, totalMax, rwM1, rwM2, mathM1, mathM2);
 
   return (
     <div className="fixed inset-0 z-[1100] flex flex-col overflow-hidden" style={{ background: '#f1f5f9' }}>
@@ -1020,6 +1229,11 @@ function SATResultsModal({ rwM1, rwM2, mathM1, mathM2, seriesName, onClose, isDi
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${b.is_correct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                       {b.is_correct ? '✓ Correct' : '✗ Wrong'}
                     </span>
+                    {activeModData.data.questionTimes?.[b.question_id] != null && (
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0 flex items-center gap-0.5">
+                        ⏱ {formatSecs(activeModData.data.questionTimes[b.question_id])}
+                      </span>
+                    )}
                   </div>
                   <div className="px-4 py-4 bg-white space-y-3">
                     {b.stem && (
@@ -1129,14 +1343,18 @@ function AdaptiveTaker({ config, onFinish }) {
   const [notes,       setNotes]       = useState({});
   const [markedForReview, setMarkedForReview] = useState(new Set());
 
-  const submittingRef = useRef(false);
-  const sessionRef    = useRef(null);
-  const questionsRef  = useRef([]);
-  const answersRef    = useRef({});
-  const m1SavedRef    = useRef(null);
-  sessionRef.current  = sessionId;
-  questionsRef.current = questions;
-  answersRef.current   = answers;
+  const submittingRef    = useRef(false);
+  const sessionRef       = useRef(null);
+  const questionsRef     = useRef([]);
+  const answersRef       = useRef({});
+  const m1SavedRef       = useRef(null);
+  const questionIdxRef   = useRef(0);
+  const qStartRef        = useRef(Date.now());
+  const questionTimesRef = useRef({});
+  sessionRef.current     = sessionId;
+  questionsRef.current   = questions;
+  answersRef.current     = answers;
+  questionIdxRef.current = questionIdx;
 
   const addNote    = (qid, text) => setNotes(p => ({ ...p, [qid]: [...(p[qid] || []), text] }));
   const deleteNote = (qid, i)    => setNotes(p => ({ ...p, [qid]: (p[qid] || []).filter((_, j) => j !== i) }));
@@ -1144,11 +1362,21 @@ function AdaptiveTaker({ config, onFinish }) {
     const s = new Set(p); s.has(qid) ? s.delete(qid) : s.add(qid); return s;
   });
 
+  const recordCurrentTime = useCallback(() => {
+    const q = questionsRef.current[questionIdxRef.current];
+    if (!q?._id) return;
+    const secs = Math.round((Date.now() - qStartRef.current) / 1000);
+    questionTimesRef.current[q._id] = (questionTimesRef.current[q._id] || 0) + secs;
+    qStartRef.current = Date.now();
+  }, []);
+
   // ── Submit handlers (declared before useEffects that depend on them to avoid TDZ) ──
 
   const submitM1 = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    recordCurrentTime();
+    const capturedTimes = { ...questionTimesRef.current };
     try {
       const res = await satService.submitModule1(
         sessionRef.current, buildAns(questionsRef.current, answersRef.current)
@@ -1156,12 +1384,13 @@ function AdaptiveTaker({ config, onFinish }) {
       m1SavedRef.current = {
         score: res.module_1.score, max_score: res.module_1.max_score,
         breakdown: res.breakdown, questions: [...questionsRef.current],
+        questionTimes: capturedTimes,
       };
       setM1Result({ ...res.module_1, tier: res.adaptive?.tier });
       setPhase('m1_done');
     } catch (e) { setError(e.message); }
     finally { submittingRef.current = false; }
-  }, []);
+  }, [recordCurrentTime]);
 
   const loadModule2 = useCallback(async () => {
     if (submittingRef.current) return;
@@ -1170,6 +1399,8 @@ function AdaptiveTaker({ config, onFinish }) {
       const res = await satService.getModule2(sessionRef.current);
       setQuestions((res.module_2.questions || []).map(normalizeQuestion));
       setTimeLeft(res.module_2.time_limit_minutes * 60);
+      questionTimesRef.current = {};
+      qStartRef.current = Date.now();
       setQuestionIdx(0); setAnswers({}); setPhase('module2');
     } catch (e) { setError(e.message); }
     finally { submittingRef.current = false; }
@@ -1178,6 +1409,8 @@ function AdaptiveTaker({ config, onFinish }) {
   const submitM2 = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    recordCurrentTime();
+    const capturedTimes = { ...questionTimesRef.current };
     setPhase('submitting');
     try {
       const res = await satService.submitModule2(
@@ -1186,14 +1419,14 @@ function AdaptiveTaker({ config, onFinish }) {
       const m1 = m1SavedRef.current || {};
       setResults({
         m1,
-        m2: { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current] },
+        m2: { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current], questionTimes: capturedTimes },
         total_score: (m1.score || 0) + (res.module_2.score || 0),
         total_max:   (m1.max_score || 0) + (res.module_2.max_score || 0),
       });
       setPhase('results');
     } catch (e) { setError(e.message); setPhase('module2'); }
     finally { submittingRef.current = false; }
-  }, []);
+  }, [recordCurrentTime]);
 
   // ── Init: start session ──
   useEffect(() => {
@@ -1225,7 +1458,7 @@ function AdaptiveTaker({ config, onFinish }) {
 
   const handleAnswer = (qid, choice) => setAnswers(p => ({ ...p, [qid]: choice }));
   const handleNext   = () => {
-    if (questionIdx < questions.length - 1) setQuestionIdx(i => i + 1);
+    if (questionIdxRef.current < questions.length - 1) { recordCurrentTime(); setQuestionIdx(questionIdxRef.current + 1); }
     else if (phase === 'module1') submitM1();
     else submitM2();
   };
@@ -1250,7 +1483,7 @@ function AdaptiveTaker({ config, onFinish }) {
       {showMore && <div className="fixed inset-0 z-[100]" onClick={() => setShowMore(false)} />}
       {showPicker && (
         <QuestionPicker questions={questions} currentIdx={questionIdx} answers={answers}
-          markedIds={markedForReview} onSelect={i => setQuestionIdx(i)} onClose={() => setShowPicker(false)} />
+          markedIds={markedForReview} onSelect={i => { recordCurrentTime(); setQuestionIdx(i); }} onClose={() => setShowPicker(false)} />
       )}
       {showNotes && (
         <NotesModal qid={currentQuestion._id} notes={notes} onAdd={addNote} onDelete={deleteNote}
@@ -1271,7 +1504,7 @@ function AdaptiveTaker({ config, onFinish }) {
         onOpenNotes={() => setShowNotes(true)} notes={notes} />
       <TestBottomBar
         currentIdx={questionIdx} totalQuestions={questions.length}
-        onBack={() => setQuestionIdx(i => i - 1)} onNext={handleNext}
+        onBack={() => { recordCurrentTime(); setQuestionIdx(questionIdxRef.current - 1); }} onNext={handleNext}
         onOpenPicker={() => setShowPicker(true)}
         isLastQuestion={questionIdx === questions.length - 1}
         nextLabel={questionIdx === questions.length - 1 ? (phase === 'module1' ? 'Submit Module 1' : 'Submit Test') : 'Next'}
@@ -1316,10 +1549,22 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
   const rwM1Ref        = useRef(null);
   const rwM2Ref        = useRef(null);
   const mathM1Ref      = useRef(null);
+  const questionIdxRef   = useRef(0);
+  const qStartRef        = useRef(Date.now());
+  const questionTimesRef = useRef({});
 
-  phaseRef.current     = phase;
-  questionsRef.current = questions;
-  answersRef.current   = answers;
+  phaseRef.current      = phase;
+  questionsRef.current  = questions;
+  answersRef.current    = answers;
+  questionIdxRef.current = questionIdx;
+
+  const recordCurrentTime = useCallback(() => {
+    const q = questionsRef.current[questionIdxRef.current];
+    if (!q?._id || !TIMED.has(phaseRef.current)) return;
+    const secs = Math.round((Date.now() - qStartRef.current) / 1000);
+    questionTimesRef.current[q._id] = (questionTimesRef.current[q._id] || 0) + secs;
+    qStartRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!TIMED.has(phase)) return;
@@ -1330,17 +1575,19 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
   const submitModule = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    recordCurrentTime();
+    const capturedTimes = { ...questionTimesRef.current };
     const cur = phaseRef.current;
     try {
       if (cur === 'rw_m1' || cur === 'math_m1') {
         const res = await satService.submitModule1(sessionRef.current, buildAns(questionsRef.current, answersRef.current));
-        const m1data = { score: res.module_1.score, max_score: res.module_1.max_score, breakdown: res.breakdown, questions: [...questionsRef.current] };
+        const m1data = { score: res.module_1.score, max_score: res.module_1.max_score, breakdown: res.breakdown, questions: [...questionsRef.current], questionTimes: capturedTimes };
         if (cur === 'rw_m1') rwM1Ref.current = m1data; else mathM1Ref.current = m1data;
         setM1Info({ ...res.module_1, tier: res.adaptive?.tier });
         setPhase(cur === 'rw_m1' ? 'rw_m1_done' : 'math_m1_done');
       } else if (cur === 'rw_m2' || cur === 'math_m2') {
         const res = await satService.submitModule2(sessionRef.current, buildAns(questionsRef.current, answersRef.current));
-        const m2data = { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current], tier: res.module_2.tier };
+        const m2data = { score: res.module_2.score, max_score: res.module_2.max_score, breakdown: res.breakdown, questions: [...questionsRef.current], tier: res.module_2.tier, questionTimes: capturedTimes };
         if (cur === 'rw_m2') {
           rwM2Ref.current = m2data;
           setPhase('rw_done');
@@ -1351,7 +1598,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
       }
     } catch (e) { setError(e.message); }
     finally { submittingRef.current = false; }
-  }, []);
+  }, [recordCurrentTime]);
 
   useEffect(() => {
     if (timeLeft !== 0 || !TIMED.has(phaseRef.current)) return;
@@ -1402,6 +1649,8 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
       const res = await satService.getModule2(sessionRef.current);
       setQuestions((res.module_2.questions || []).map(normalizeQuestion));
       setTimeLeft(res.module_2.time_limit_minutes * 60);
+      questionTimesRef.current = {};
+      qStartRef.current = Date.now();
       setQuestionIdx(0); setAnswers({});
       setPhase(cur === 'rw_m1_done' ? 'rw_m2' : 'math_m2');
     } catch (e) { setError(e.message); }
@@ -1410,6 +1659,8 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
 
   const applyMathResume = useCallback((mathRes) => {
     sessionRef.current = mathRes.session_id;
+    questionTimesRef.current = {};
+    qStartRef.current = Date.now();
     if (mathRes.status === 'math_m1_complete') {
       setPhase('math_m1_done');
     } else if (mathRes.status === 'math_m2_in_progress') {
@@ -1529,7 +1780,7 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
       {showMore && <div className="fixed inset-0 z-[100]" onClick={() => setShowMore(false)} />}
       {showPicker && (
         <QuestionPicker questions={questions} currentIdx={questionIdx} answers={answers}
-          markedIds={markedForReview} onSelect={i => setQuestionIdx(i)} onClose={() => setShowPicker(false)} />
+          markedIds={markedForReview} onSelect={i => { recordCurrentTime(); setQuestionIdx(i); }} onClose={() => setShowPicker(false)} />
       )}
       {showNotes && (
         <NotesModal qid={currentQuestion._id} notes={notes} onAdd={addNote} onDelete={deleteNote}
@@ -1551,8 +1802,8 @@ function FullTestTaker({ rwConfig, mathConfig, seriesName, testType, onFinish })
         onOpenNotes={() => setShowNotes(true)} notes={notes} />
       <TestBottomBar
         currentIdx={questionIdx} totalQuestions={questions.length}
-        onBack={() => setQuestionIdx(i => i - 1)}
-        onNext={() => { if (questionIdx < questions.length - 1) setQuestionIdx(i => i + 1); else submitModule(); }}
+        onBack={() => { recordCurrentTime(); setQuestionIdx(questionIdxRef.current - 1); }}
+        onNext={() => { if (questionIdxRef.current < questions.length - 1) { recordCurrentTime(); setQuestionIdx(questionIdxRef.current + 1); } else submitModule(); }}
         onOpenPicker={() => setShowPicker(true)}
         isLastQuestion={questionIdx === questions.length - 1}
         nextLabel={questionIdx === questions.length - 1 ? (isM1Phase ? 'Submit Module 1' : 'Submit Test') : 'Next'}

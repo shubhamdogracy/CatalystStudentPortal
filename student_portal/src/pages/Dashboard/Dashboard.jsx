@@ -68,9 +68,9 @@ export default function Dashboard({ student }) {
       </div>
 
       {/* ── Row 1: Predicted Score + Countdown + Streak ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-        <div className="lg:col-span-2">
-          <ScoreProgressionCard data={scoreProgression} loading={loadingScore} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          <ScoreProgressionCard data={scoreProgression} loading={loadingScore} className="flex-1 h-full" />
         </div>
         <div className="flex flex-col gap-4">
           <ExamCountdownCard satExamDate={student?.satExamDate} />

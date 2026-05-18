@@ -52,7 +52,7 @@ function Skeleton() {
   );
 }
 
-export default function ScoreProgressionCard({ data, loading }) {
+export default function ScoreProgressionCard({ data, loading, className = '' }) {
   const navigate = useNavigate();
   const hasPair  = data.some(d => d.isPair);
   const hasData  = data.length > 0;
@@ -61,7 +61,7 @@ export default function ScoreProgressionCard({ data, loading }) {
 
   if (!hasData) {
     return (
-      <div className="relative rounded-[18px] p-6 overflow-hidden flex flex-col items-center justify-center gap-3 min-h-[180px] text-center"
+      <div className={`relative rounded-[18px] p-6 overflow-hidden flex flex-col items-center justify-center gap-3 min-h-[180px] text-center ${className}`}
            style={{ background: 'linear-gradient(135deg, #3730a3 0%, #6d28d9 55%, #7c3aed 100%)' }}>
         <div className="text-4xl">📊</div>
         <p className="text-white font-bold text-base">No Predicted Score Yet</p>
@@ -84,7 +84,7 @@ export default function ScoreProgressionCard({ data, loading }) {
   const yTicks  = hasPair ? [400, 600, 800, 1000, 1200, 1400, 1600] : [200, 300, 400, 500, 600, 700, 800];
 
   return (
-    <div className="relative rounded-[18px] p-6 overflow-hidden"
+    <div className={`relative rounded-[18px] p-6 overflow-hidden ${className}`}
          style={{ background: 'linear-gradient(135deg, #3730a3 0%, #6d28d9 55%, #7c3aed 100%)', boxShadow: '0 8px 32px rgba(99,102,241,0.35)' }}>
       <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-20"
            style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)' }} />
