@@ -7,7 +7,6 @@ function fireConfetti() {
 
 export default function StreakCard({ streak }) {
   const current = streak?.current ?? 0;
-  const longest = streak?.longest ?? 0;
 
   // Fires when we navigate to dashboard after a streak-incrementing submission.
   // PracticeTaker stores the new streak value in sessionStorage; we fire confetti
@@ -21,7 +20,6 @@ export default function StreakCard({ streak }) {
     }
   }, [current]);
 
-  const flameColor = current >= 7 ? '#f97316' : current >= 3 ? '#f59e0b' : '#94a3b8';
 
   // return (
   //   <div
