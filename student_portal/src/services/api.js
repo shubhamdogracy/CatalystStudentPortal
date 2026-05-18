@@ -7,10 +7,12 @@ const handleResponse = async (res) => {
 };
 
 // credentials: 'include' sends the httpOnly cookie automatically on every request
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
 const req = (url, options = {}) =>
   fetch(`${BASE_URL}${url}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { 'Content-Type': 'application/json', 'X-Timezone': TZ, ...options.headers },
     ...options,
   }).then(handleResponse);
 
