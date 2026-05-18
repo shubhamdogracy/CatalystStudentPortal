@@ -4,7 +4,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { TrendingUp, ChevronDown } from 'lucide-react';
 import MathContent from '../../components/common/MathContent';
 import { satService } from '../../services/api';
 import DesmosCalculator from '../Assignments/DesmosCalculator';
@@ -194,7 +195,14 @@ function AdaptiveResults({ config, results, onDone }) {
 
 // ─── Practice test results ─────────────────────────────────────────────────────
 function PracticeResults({ config, results, onDone }) {
-  const pct     = results.percentage || 0;
+  const navigate = useNavigate();
+  const pct      = results.percentage || 0;
+
+  useEffect(() => {
+    if (results?.streak?.justIncremented) {
+      setTimeout(() => confetti({ particleCount: 140, spread: 80, origin: { y: 0.55 }, colors: ['#f97316', '#fbbf24', '#ef4444', '#a855f7', '#3b82f6'] }), 400);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const passed  = pct >= 60;
   const correct = results.breakdown?.filter(b => b.is_correct).length || 0;
   const total   = results.breakdown?.length || 0;
@@ -259,7 +267,7 @@ function PracticeResults({ config, results, onDone }) {
           </div>
         ))}
       </div>
-      <button onClick={onDone}
+      <button onClick={() => { onDone(); navigate('/sat/practice'); }}
         className="w-full py-3 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
         style={{ backgroundColor: C.accent }}>
         Back to Practice Tests
@@ -1621,6 +1629,9 @@ function PracticeTaker({ config, onFinish }) {
     }));
     try {
       const res = await satService.submitPractice(sessionRef.current, payload);
+      if (res.streak?.justIncremented && res.streak?.current > 0) {
+        sessionStorage.setItem('streakCelebrate', String(res.streak.current));
+      }
       setResults(res); setPhase('results');
     } catch (e) { setError(e.message); setPhase('taking'); }
     finally { submittingRef.current = false; }
@@ -2030,6 +2041,9 @@ function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
   const [error,       setError]       = useState('');
   const [subject,     setSubject]     = useState('all');
   const [showUnlock,  setShowUnlock]  = useState(false);
+  const [collapsed,   setCollapsed]   = useState(new Set());
+
+  const toggleTopic = (t) => setCollapsed(s => { const n = new Set(s); n.has(t) ? n.delete(t) : n.add(t); return n; });
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -2057,6 +2071,16 @@ function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
   });
 
   const filtered = subject === 'all' ? configs : configs.filter(c => c.subject === subject);
+
+  // Build topic → sub_topic → configs hierarchy
+  const grouped = {};
+  filtered.forEach(cfg => {
+    const t = cfg.topic || 'Other';
+    const s = cfg.sub_topic || 'General';
+    if (!grouped[t]) grouped[t] = {};
+    if (!grouped[t][s]) grouped[t][s] = [];
+    grouped[t][s].push(cfg);
+  });
 
   if (loading) return <div className="flex items-center justify-center py-24 text-slate-400 text-sm">Loading practice tests…</div>;
 
@@ -2092,65 +2116,101 @@ function PracticeConfigList({ onStart, onViewResults, isGuest = false }) {
           <h3 className="text-base font-extrabold text-slate-700 mb-1">No practice tests available</h3>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filtered.map(cfg => {
-            const best = bestScores[cfg._id];
-            const isPracticeGuestLocked = isGuest && !cfg.is_demo_accessible;
-            return (
-              <div key={cfg._id}
-                className={`bg-white rounded-2xl border transition-all p-5 flex flex-col gap-3 ${isPracticeGuestLocked ? 'border-slate-200 opacity-75' : 'hover:shadow-md'}`}
-                style={{ borderColor: isPracticeGuestLocked ? undefined : C.border }}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-900 leading-snug">{cfg.name}</p>
-                      {isPracticeGuestLocked && <span className="text-base">🔒</span>}
+          <div className="flex flex-col gap-3">
+            {Object.entries(grouped).map(([topic, subtopics]) => {
+              const allCfgs  = Object.values(subtopics).flat();
+              const doneCount = allCfgs.filter(c => bestScores[c._id] !== undefined).length;
+              const isOpen   = !collapsed.has(topic);
+
+              return (
+                <div key={topic} className="rounded-2xl border border-slate-200 overflow-hidden">
+                  {/* Topic header */}
+                  <button
+                    onClick={() => toggleTopic(topic)}
+                    className="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-[14px] font-extrabold text-slate-800">{topic}</span>
+                      <span className="text-[11px] text-slate-400 font-medium">{allCfgs.length} test{allCfgs.length !== 1 ? 's' : ''}</span>
+                      {doneCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+                          {doneCount}/{allCfgs.length} done
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
-                      {cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
-                    </div>
-                  </div>
-                  {best !== undefined && !isPracticeGuestLocked && (
-                    <div className={`shrink-0 text-center px-2.5 py-1 rounded-xl ${best >= 70 ? 'bg-green-50' : best >= 50 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                      <p className={`text-xs font-bold ${best >= 70 ? 'text-green-700' : best >= 50 ? 'text-yellow-700' : 'text-red-600'}`}>{best}%</p>
-                      <p className="text-[9px] text-slate-400">best</p>
+                    <ChevronDown size={16} className={`text-slate-400 transition-transform shrink-0 ${isOpen ? '' : '-rotate-90'}`} />
+                  </button>
+
+                  {/* Sub-topic groups */}
+                  {isOpen && (
+                    <div className="p-4 flex flex-col gap-5">
+                      {Object.entries(subtopics).map(([sub, cfgs]) => (
+                        <div key={sub}>
+                          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <span>{sub}</span>
+                            <span className="h-px flex-1 bg-slate-100" />
+                            <span className="font-semibold normal-case tracking-normal">{cfgs.length} test{cfgs.length !== 1 ? 's' : ''}</span>
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {cfgs.map(cfg => {
+                              const best = bestScores[cfg._id];
+                              const isPracticeGuestLocked = isGuest && !cfg.is_demo_accessible;
+                              return (
+                                <div key={cfg._id}
+                                  className={`bg-white rounded-xl border flex flex-col gap-3 p-4 transition-all ${isPracticeGuestLocked ? 'border-slate-200 opacity-75' : 'hover:shadow-md border-slate-200'}`}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="text-[13px] font-bold text-slate-900 leading-snug">{cfg.name}</p>
+                                        {isPracticeGuestLocked && <span>🔒</span>}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUBJ_STYLE[cfg.subject]}`}>{SUBJ_LABEL[cfg.subject]}</span>
+                                        {cfg.is_demo_accessible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Free</span>}
+                                      </div>
+                                    </div>
+                                    {best !== undefined && !isPracticeGuestLocked && (
+                                      <div className={`shrink-0 text-center px-2 py-1 rounded-lg ${best >= 70 ? 'bg-green-50' : best >= 50 ? 'bg-yellow-50' : 'bg-red-50'}`}>
+                                        <p className={`text-xs font-bold ${best >= 70 ? 'text-green-700' : best >= 50 ? 'text-yellow-700' : 'text-red-600'}`}>{best}%</p>
+                                        <p className="text-[9px] text-slate-400">best</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] flex gap-3" style={{ color: C.textMuted }}>
+                                    <span>{cfg.total_questions} questions</span>
+                                    <span>·</span>
+                                    <span>{cfg.time_limit_minutes} min</span>
+                                  </div>
+                                  {isPracticeGuestLocked ? (
+                                    <button onClick={() => setShowUnlock(true)}
+                                      className="w-full py-2 rounded-xl text-xs font-extrabold text-white flex items-center justify-center gap-1.5 hover:opacity-90 transition-all"
+                                      style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}>
+                                      🔓 Unlock to Access
+                                    </button>
+                                  ) : best !== undefined ? (
+                                    <button onClick={() => onViewResults(cfg, latestSession[cfg._id])}
+                                      className="w-full py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-all"
+                                      style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                                      View Results →
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => onStart(cfg)}
+                                      className="w-full py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-all"
+                                      style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                                      Start Practice →
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-                <div className="rounded-xl p-3 flex flex-col gap-1" style={{ backgroundColor: C.bg1 }}>
-                  <div className="flex gap-2 text-xs"><span className="w-14" style={{ color: C.textMuted }}>Topic</span><span className="font-medium" style={{ color: C.text }}>{cfg.topic}</span></div>
-                  <div className="flex gap-2 text-xs"><span className="w-14" style={{ color: C.textMuted }}>Sub-Topic</span><span className="font-medium" style={{ color: C.text }}>{cfg.sub_topic}</span></div>
-                  <div className="flex gap-4 mt-1 text-[11px]" style={{ color: C.textMuted }}>
-                    <span>{cfg.total_questions} questions</span><span>·</span><span>{cfg.time_limit_minutes} min</span>
-                  </div>
-                </div>
-                {isPracticeGuestLocked ? (
-                  <button
-                    onClick={() => setShowUnlock(true)}
-                    className="w-full py-3 rounded-xl text-sm font-extrabold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:shadow-[0_4px_20px_rgba(245,158,11,0.45)] active:scale-[0.98]"
-                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)' }}>
-                    🔓 Unlock to Access
-                  </button>
-                ) : best !== undefined ? (
-                  <button
-                    onClick={() => onViewResults(cfg, latestSession[cfg._id])}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-                    View Results →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onStart(cfg)}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                    Start Practice →
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
       )}
     </div>
   );

@@ -41,10 +41,17 @@ export function AuthProvider({ children }) {
   const updateStudent = (updated) =>
     setStudent(s => ({ ...s, ...updated, mentors: s.mentors, mentor: s.mentor, batchInfo: s.batchInfo }));
 
+  const refreshUser = async () => {
+    try {
+      const res = await authService.me();
+      setStudent(s => ({ ...s, ...res.data }));
+    } catch { /* silently ignore */ }
+  };
+
   const isGuest = student?.role === 'guest' || student?.accountType === 'guest';
 
   return (
-    <AuthContext.Provider value={{ student, loading, isGuest, login, logout, updateStudent }}>
+    <AuthContext.Provider value={{ student, loading, isGuest, login, logout, updateStudent, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

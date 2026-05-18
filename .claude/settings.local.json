@@ -29,7 +29,10 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Shubham\\\\WebstormProjects\\\\catalyst_admin\\\\Catalyst_admin\\\\src\\\\components\\\\mentor\\\\students\" -Recurse -File | ForEach-Object { $_.FullName })",
       "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\" -Recurse -File)"
+      "Bash(Get-ChildItem -Path \"C:\\\\users\\\\shubham\\\\webstormprojects\\\\catalyst_student\\\\student_portal\\\\src\" -Recurse -File)",
+      "Bash(xargs grep -l \"getHistory\\\\|history\")",
+      "Bash(node -e \"require\\('./src/utils/streak'\\); require\\('./src/models/Student'\\); console.log\\('OK'\\)\")",
+      "Bash(node -e \"require\\('./src/controllers/sat/satTestController'\\); console.log\\('OK'\\)\")"
     ]
   }
 }
