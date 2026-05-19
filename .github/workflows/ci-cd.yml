@@ -11,9 +11,6 @@ jobs:
   ci:
     name: Lint & Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: student_portal
 
     steps:
       - name: Checkout code
@@ -22,9 +19,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
-          cache-dependency-path: student_portal/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -41,7 +38,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: student_portal/dist
+          path: dist
 
   # ─── CD: Deploy to GitHub Pages (master only) ───────────────────
   deploy:
