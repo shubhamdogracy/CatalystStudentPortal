@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+.env-local
+.env-prod
+.env.development
+.env.production
+.env
+
 # Claude Code local settings
 .claude/settings.local.json
 
